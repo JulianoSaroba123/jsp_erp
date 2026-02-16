@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator
+pydantic[email]
+slowapi
+alembic
+
+# Testing dependencies
+pytest
+pytest-cov
+httpx
+faker

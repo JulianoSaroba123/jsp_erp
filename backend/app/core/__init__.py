@@ -1,0 +1,3 @@
+"""
+Core utilities do projeto.
+"""
