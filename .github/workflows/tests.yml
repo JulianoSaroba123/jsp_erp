@@ -55,11 +55,13 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pytest pytest-cov
 
-      - name: Create test database
+      - name: Create test database and extensions
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
           psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE jsp_erp_test;"
+          psql "postgresql://postgres:postgres@localhost:5432/jsp_erp_test" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql "postgresql://postgres:postgres@localhost:5432/jsp_erp_test" -c "CREATE SCHEMA IF NOT EXISTS core;"
       
       - name: Alembic upgrade head (test DB)
         working-directory: backend
