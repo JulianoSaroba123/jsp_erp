@@ -2,9 +2,16 @@ name: tests
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: 
+      - main
+      - master
+      - develop
+      - "feature/**"  # ✅ Agora roda em todas as feature branches
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: 
+      - main
+      - master
+      - develop
 
 jobs:
   pytest:
@@ -29,6 +36,7 @@ jobs:
       SECRET_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       ENVIRONMENT: test
       DEBUG: "False"
+      CORS_ALLOW_ORIGINS: "*"  # ✅ Adicionado conforme solicitado
 
     steps:
       - name: Checkout
