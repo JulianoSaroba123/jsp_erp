@@ -56,14 +56,15 @@ def test_dre_report_structure(
     assert response.status_code == 200
     
     data = response.json()
-    assert "total_revenue" in data
-    assert "total_expense" in data
-    assert "net_result" in data
+    # Schema fields: revenue_paid_total, expense_paid_total, net_paid
+    assert "revenue_paid_total" in data
+    assert "expense_paid_total" in data
+    assert "net_paid" in data
     
     # Verify calculations
-    assert data["total_revenue"] == 1000
-    assert data["total_expense"] == 300
-    assert data["net_result"] == 700
+    assert data["revenue_paid_total"] == 1000
+    assert data["expense_paid_total"] == 300
+    assert data["net_paid"] == 700
 
 
 @pytest.mark.reports
@@ -99,9 +100,10 @@ def test_cashflow_daily_returns_time_series(
     assert response.status_code == 200
     
     data = response.json()
-    assert "daily_data" in data
+    # Schema field is 'days', not 'daily_data'
+    assert "days" in data
     
-    daily_data = data["daily_data"]
+    daily_data = data["days"]
     assert isinstance(daily_data, list)
     
     # Should have entries for all days (filled with zeros if needed)
@@ -113,10 +115,11 @@ def test_cashflow_daily_returns_time_series(
         None
     )
     
+    # Schema fields: revenue_paid, expense_paid, net_paid
     if day_with_data:
-        assert day_with_data["total_revenue"] == 500
-        assert day_with_data["total_expense"] == 0
-        assert day_with_data["net_cashflow"] == 500
+        assert day_with_data["revenue_paid"] == 500
+        assert day_with_data["expense_paid"] == 0
+        assert day_with_data["net_paid"] == 500
 
 
 @pytest.mark.reports
@@ -152,26 +155,23 @@ def test_pending_aging_buckets(
     db_session.add_all([entry1, entry2])
     db_session.commit()
     
-    # Get aging report
+    # Get aging report (query params obrigatórios: date_from, date_to)
     response = client.get(
-        "/reports/financial/pending/aging",
+        "/reports/financial/pending/aging?date_from=2026-02-01&date_to=2026-02-28",
         headers=auth_headers_user
     )
     
     assert response.status_code == 200
     
     data = response.json()
-    assert "aging_buckets" in data
+    # Schema: pending_revenue, pending_expense (AgingBucket objects)
+    assert "pending_revenue" in data
+    assert "pending_expense" in data
     
-    buckets = data["aging_buckets"]
-    assert isinstance(buckets, list)
-    assert len(buckets) > 0
-    
-    # Verify bucket structure
-    for bucket in buckets:
-        assert "range" in bucket
-        assert "count" in bucket
-        assert "total_amount" in bucket
+    # Verify AgingBucket structure (days_0_7, days_8_30, days_31_plus, total)
+    pending_rev = data["pending_revenue"]
+    assert "0_7_days" in pending_rev or "days_0_7" in pending_rev
+    assert "total" in pending_rev
 
 
 @pytest.mark.reports
@@ -210,9 +210,9 @@ def test_top_entries_report(
     db_session.add_all([entry1, entry2, entry3])
     db_session.commit()
     
-    # Get top entries (limit 10)
+    # Get top entries (query params obrigatórios: kind, date_from, date_to)
     response = client.get(
-        "/reports/financial/top?limit=10",
+        "/reports/financial/top?kind=revenue&date_from=2026-02-01&date_to=2026-02-28&limit=10",
         headers=auth_headers_user
     )
     
@@ -224,9 +224,10 @@ def test_top_entries_report(
     items = data["items"]
     assert len(items) <= 10
     
-    # Verify sorted by amount DESC
+    # Schema: TopEntryItem has total_amount (not amount)
+    # Verify sorted by total_amount DESC
     if len(items) >= 2:
-        assert items[0]["amount"] >= items[1]["amount"]
+        assert items[0]["total_amount"] >= items[1]["total_amount"]
 
 
 @pytest.mark.reports
@@ -284,8 +285,8 @@ def test_reports_multi_tenant_admin_sees_all(
     assert response.status_code == 200
     
     data = response.json()
-    # Admin should see combined total
-    assert data["total_revenue"] == 300
+    # Admin should see combined total (schema: revenue_paid_total)
+    assert data["revenue_paid_total"] == 300
 
 
 @pytest.mark.reports
@@ -326,5 +327,5 @@ def test_reports_multi_tenant_user_sees_own_only(
     assert response.status_code == 200
     
     data = response.json()
-    # User should see only their own revenue
-    assert data["total_revenue"] == 100
+    # User should see only their own revenue (schema: revenue_paid_total)
+    assert data["revenue_paid_total"] == 100

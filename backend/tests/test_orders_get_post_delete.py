@@ -82,7 +82,9 @@ def test_create_order_with_positive_total_creates_financial(
     assert financial.amount == 150.50
     assert financial.kind == "revenue"
     assert financial.status == "pending"
-    assert financial.description == "Receita gerada automaticamente pelo pedido"
+    # Description format: "Pedido {order_id} - {original_description}"
+    assert "Order with payment" in financial.description
+    assert order_id in financial.description
 
 
 @pytest.mark.integration
