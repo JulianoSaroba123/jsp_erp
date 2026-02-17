@@ -1,0 +1,71 @@
+name: tests
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/jsp_erp_test
+      SECRET_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      ENVIRONMENT: test
+      DEBUG: "False"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Create test database
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE jsp_erp_test;"
+      
+      - name: Alembic upgrade head (test DB)
+        working-directory: backend
+        run: |
+          python -m alembic upgrade head
+
+      - name: Run tests with coverage
+        working-directory: backend
+        run: |
+          pytest -q --cov=app --cov-report=term-missing --cov-report=html
+
+      - name: Upload coverage HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: backend/htmlcov
+          retention-days: 7

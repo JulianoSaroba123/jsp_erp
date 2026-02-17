@@ -2,23 +2,28 @@
 Pytest fixtures for ERP JSP test suite.
 
 Provides:
-- Database session management with isolated test database
-- Test client for API requests
+- Transactional database isolation (each test runs in a transaction + ROLLBACK)
+- Test client for API requests with dependency override
 - User fixtures (admin and normal users)
 - Authentication headers
-- Automatic migration application
+- Automatic table creation (once per session)
+
+STRATEGY:
+- Each test runs inside a PostgreSQL transaction
+- At test end: ROLLBACK (automatic cleanup, no TRUNCATE needed)
+- Uses SAVEPOINT (begin_nested) to allow endpoints to commit internally
+- FastAPI app uses the same Session via get_db override
 """
 
 import os
-import subprocess
 from typing import Generator
 from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.engine import Engine, Connection
 
 from app.main import app
 from app.database import Base
@@ -34,99 +39,162 @@ from app.auth.security import hash_password, create_access_token
 # DATABASE CONFIGURATION
 # ============================================================================
 
-def get_test_database_url() -> str:
+@pytest.fixture(scope="session")
+def engine_test() -> Generator[Engine, None, None]:
     """
-    Get test database URL from environment.
+    Create SQLAlchemy engine for test database (session-scoped).
     
-    Falls back to test database if DATABASE_URL_TEST not set.
-    """
-    test_url = os.getenv(
-        "DATABASE_URL_TEST",
-        "postgresql://jsp_user:jsp123456@localhost:5432/jsp_erp_test"
-    )
-    return test_url
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_database():
-    """
-    Create tables in test database once per test session.
-    """
-    test_db_url = get_test_database_url()
+    FAIL-FAST: Requires DATABASE_URL_TEST environment variable.
+    This prevents accidentally running tests on production database.
     
-    # Create engine for test database
-    from sqlalchemy import create_engine as create_engine_
-    test_engine = create_engine_(test_db_url)
+    Returns:
+        Engine connected to test database
     
-    # Import all models to ensure they're registered with Base.metadata
+    Raises:
+        RuntimeError: If DATABASE_URL_TEST not set
+    """
+    test_url = os.getenv("DATABASE_URL_TEST")
+    
+    if not test_url:
+        raise RuntimeError(
+            "❌ DATABASE_URL_TEST environment variable is required for tests!\n"
+            "Example: export DATABASE_URL_TEST='postgresql://user:pass@localhost:5432/jsp_erp_test'\n"
+            "This prevents accidentally running tests on production database."
+        )
+    
+    # Create engine
+    engine = create_engine(test_url, echo=False)
+    
+    # Import all models to register with Base.metadata
     from app.models.user import User  # noqa
     from app.models.order import Order  # noqa
     from app.models.financial_entry import FinancialEntry  # noqa
     
+    # Create tables once (if not exist)
     try:
-        # Try to create pgcrypto extension (may need superuser privileges)
-        try:
-            with test_engine.connect() as conn:
+        # Try to create pgcrypto extension (may require superuser)
+        with engine.connect() as conn:
+            try:
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
                 conn.commit()
-        except Exception:
-            # Extension might already exist or user doesn't have permission
-            # This is OK - extension should be pre-created by superuser
-            pass
+            except Exception:
+                # Extension already exists or permission denied (OK)
+                conn.rollback()
         
         # Create all tables
-        Base.metadata.create_all(bind=test_engine)
-        
-        yield
-        
-    finally:
-        # Cleanup: drop all tables after tests
-        # Base.metadata.drop_all(bind=test_engine)
-        test_engine.dispose()
-
+        Base.metadata.create_all(bind=engine)
+    
+    except Exception as e:
+        engine.dispose()
+        raise RuntimeError(f"Failed to setup test database: {e}")
+    
+    yield engine
+    
+    # Cleanup: dispose engine after all tests
+    engine.dispose()
 
 
 @pytest.fixture(scope="function")
-def db_session(setup_test_database) -> Generator[Session, None, None]:
+def db_connection(engine_test: Engine) -> Generator[Connection, None, None]:
     """
-    Create a fresh database session for each test.
+    Create database connection with transaction (function-scoped).
     
-    Cleans up all data after test completes.
+    Each test gets a fresh connection with an active transaction.
+    At test end: ROLLBACK (all changes discarded, database pristine).
+    
+    This ensures complete test isolation without TRUNCATE.
+    
+    Yields:
+        Connection with active transaction
     """
-    test_db_url = get_test_database_url()
-    engine = create_engine(test_db_url)
-    SessionLocal = sessionmaker(bind=engine)
+    connection = engine_test.connect()
+    transaction = connection.begin()
     
+    try:
+        yield connection
+    finally:
+        # ROLLBACK: discard all changes (check if active to avoid SAWarning)
+        if transaction.is_active:
+            transaction.rollback()
+        connection.close()
+
+
+@pytest.fixture(scope="function")
+def db_session(db_connection: Connection) -> Generator[Session, None, None]:
+    """
+    Create SQLAlchemy Session bound to test connection (function-scoped).
+    
+    SIMPLIFIED APPROACH: No SAVEPOINT, just override commit() to flush().
+    All test data is flushed (visible) but never committed.
+    At test end: connection.rollback() discards everything.
+    
+    Yields:
+        Session with commit() = flush()
+    """
+    # Create Session bound to test connection
+    SessionLocal = sessionmaker(
+        bind=db_connection,
+        autocommit=False,
+        autoflush=True
+    )
     session = SessionLocal()
+    
+    # Override commit() to just flush
+    # Tests can call commit(), but we just flush (no actual COMMIT/SAVEPOINT)
+    original_commit = session.commit
+    
+    def fake_commit():
+        """
+        Fake commit that just flushes data to make it visible.
+        No actual COMMIT or SAVEPOINT - data stays in transaction.
+        """
+        session.flush()  # Make data visible within transaction
+    
+    session.commit = fake_commit
     
     try:
         yield session
     finally:
-        # Cleanup data in reverse order (FK constraints)
-        session.execute(text("TRUNCATE TABLE core.financial_entries CASCADE"))
-        session.execute(text("TRUNCATE TABLE core.orders CASCADE"))
-        session.execute(text("TRUNCATE TABLE core.users CASCADE"))
-        session.commit()
+        session.commit = original_commit  # Restore original
         session.close()
 
 
 @pytest.fixture(scope="function")
 def client(db_session: Session) -> Generator[TestClient, None, None]:
     """
-    Create a test client with overridden database dependency.
+    Create FastAPI test client with database dependency override.
+    
+    Overrides app.security.deps.get_db to return the test session.
+    This ensures endpoints use the same transactional session as tests.
+    
+    IMPORTANT: All endpoints will use db_session, so commits are local
+    to the SAVEPOINT and won't affect other tests.
+    
+    Yields:
+        TestClient configured for testing
     """
     def override_get_db():
+        """
+        Override get_db dependency to return test session.
+        
+        CRITICAL: Do NOT create a new session here.
+        MUST yield the same db_session that the test is using.
+        """
         try:
             yield db_session
         finally:
-            pass  # Session cleanup handled by db_session fixture
+            # Don't close session here (handled by db_session fixture)
+            pass
     
+    # Override FastAPI dependency
     app.dependency_overrides[get_db] = override_get_db
     
-    with TestClient(app) as test_client:
-        yield test_client
-    
-    app.dependency_overrides.clear()
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        # Clear overrides after test
+        app.dependency_overrides.clear()
 
 
 # ============================================================================
