@@ -39,7 +39,7 @@ class FinancialEntryResponse(BaseModel):
     user_id: UUID
     kind: str
     status: str
-    amount: Decimal
+    amount: float  # Serializado como number (não string) para compatibilidade frontend
     description: str
     occurred_at: datetime
     created_at: datetime

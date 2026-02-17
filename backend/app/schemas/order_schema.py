@@ -44,8 +44,34 @@ class OrderOut(BaseModel):
     id: UUID
     user_id: UUID
     description: str
-    total: Decimal
+    total: float  # Serializado como number (não string) para compatibilidade frontend
     created_at: datetime
+    updated_at: datetime  # Adicionado na ETAPA 5
 
     class Config:
         from_attributes = True  # Permite conversão de ORM model
+
+
+class OrderUpdate(BaseModel):
+    """
+    Schema para atualização parcial de pedido (PATCH).
+    
+    Todos os campos são opcionais.
+    - description: Nova descrição do pedido
+    - total: Novo valor total (sincroniza com lançamento financeiro)
+    
+    Regras:
+    - user_id é IMUTÁVEL (multi-tenant protegido)
+    - total não pode ser alterado se financeiro está "paid"
+    - total = 0 cancela financeiro (se pending)
+    - total > 0 reabre financeiro cancelado ou cria novo
+    """
+    description: str | None = Field(None, min_length=3, max_length=500)
+    total: Decimal | None = Field(None, ge=0, max_digits=12, decimal_places=2)
+    
+    model_config = {"json_schema_extra": {
+        "example": {
+            "description": "Pedido atualizado",
+            "total": 150.50
+        }
+    }}
