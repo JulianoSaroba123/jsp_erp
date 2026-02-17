@@ -280,8 +280,14 @@ def delete_order(
         
         return {"ok": True}
     
+    except PermissionError as e:
+        # Erro de permissão (user tentou deletar pedido de outro) = 403 Forbidden
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
     except ValueError as e:
-        # ValueError de business rule = 409 Conflict (não 403)
+        # ValueError de business rule = 409 Conflict
         # Ex: pedido com financial entry pago não pode ser deletado
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

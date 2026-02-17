@@ -155,7 +155,7 @@ class OrderService:
         
         # Validação multi-tenant: user só pode deletar seus próprios pedidos
         if not is_admin and user_id and order.user_id != user_id:
-            raise ValueError("Você não tem permissão para deletar este pedido")
+            raise PermissionError("Você não tem permissão para deletar este pedido")
 
         # INTEGRAÇÃO FINANCEIRA: Cancelar lançamento se existir e status='pending'
         # Se status='paid', lança exceção (bloqueia delete)
@@ -256,8 +256,10 @@ class OrderService:
                         db.flush()  # Testa UNIQUE constraint sem commit
                     
                     except IntegrityError:
-                        db.rollback()
-                        # Entry foi criado em race condition, buscar e atualizar
+                        # Entry foi criado em race condition (idempotência)
+                        # Não faz rollback - preserva alterações do order
+                        # Busca entry existente e atualiza amount
+                        db.rollback()  # Rollback apenas da tentativa de INSERT
                         financial_entry = (
                             db.query(FinancialEntry)
                             .filter(FinancialEntry.order_id == order_id)
@@ -265,6 +267,12 @@ class OrderService:
                         )
                         if financial_entry:
                             financial_entry.amount = total
+                            # Re-aplicar mudanças do order que foram desfeitas
+                            order = db.query(Order).filter(Order.id == order_id).first()
+                            if order:
+                                if description is not None:
+                                    order.description = description
+                                order.total = total
             
             else:  # total == 0
                 # 5.4. Cancelar entry se existe e está pending
