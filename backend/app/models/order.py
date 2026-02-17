@@ -31,6 +31,11 @@ class Order(Base):
     description = Column(Text, nullable=False)
     total = Column(Numeric(12, 2), nullable=False, server_default=text("0"))
     created_at = Column(TIMESTAMP, server_default=text("now()"))
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=text("now()"),
+        onupdate=text("now()")  # Atualiza automaticamente
+    )
 
     # Relacionamentos
     user = relationship("User", back_populates="orders", lazy="select")

@@ -11,7 +11,6 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.services.financial_service import FinancialService
 from app.schemas.financial_schema import (
     FinancialEntryCreate,
@@ -21,18 +20,10 @@ from app.schemas.financial_schema import (
 )
 from app.auth import get_current_user
 from app.models.user import User
+from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="/financial/entries", tags=["Financeiro"])
-
-
-def get_db():
-    """Dependency para obter sessão do banco."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("", response_model=FinancialEntryListResponse, status_code=status.HTTP_200_OK)

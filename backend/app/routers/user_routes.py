@@ -8,22 +8,13 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
 
-from app.database import SessionLocal
 from app.services.user_service import UserService
 from app.schemas.user_schema import UserCreate, UserUpdate, UserResponse
 from app.security.password import hash_password
+from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-
-def get_db():
-    """Dependência de banco"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("", response_model=dict)

@@ -62,6 +62,23 @@ class OrderRepository:
         return db.query(Order).filter(Order.id == order_id).first()
 
     @staticmethod
+    def get_by_id_and_user(db: Session, order_id: UUID, user_id: UUID) -> Optional[Order]:
+        """
+        Busca pedido por ID com filtro multi-tenant.
+        
+        Retorna None se:
+        - Order não existe
+        - Order não pertence ao user_id fornecido
+        
+        Usado para anti-enumeration (404 para ambos os casos).
+        """
+        return (
+            db.query(Order)
+            .filter(Order.id == order_id, Order.user_id == user_id)
+            .first()
+        )
+
+    @staticmethod
     def create(db: Session, user_id: UUID, description: str, total: float) -> Order:
         """
         Cria novo pedido.
@@ -88,3 +105,29 @@ class OrderRepository:
         """Remove pedido do banco."""
         db.delete(order)
         db.commit()
+
+    @staticmethod
+    def update_order(db: Session, order: Order, description: Optional[str] = None, total: Optional[float] = None) -> Order:
+        """
+        Atualiza campos do pedido.
+        
+        Args:
+            db: Sessão SQLAlchemy
+            order: Instância Order já carregada (deve ter user_id validado)
+            description: Nova descrição (None = não altera)
+            total: Novo total (None = não altera)
+        
+        Returns:
+            Order atualizado e refreshed
+        
+        Note:
+            - NÃO faz commit (deixa para Service layer)
+            - updated_at é atualizado automaticamente via onupdate
+        """
+        if description is not None:
+            order.description = description
+        
+        if total is not None:
+            order.total = total
+        
+        return order

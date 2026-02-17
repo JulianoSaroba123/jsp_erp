@@ -6,20 +6,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.database import SessionLocal
 from app.config import APP_NAME, APP_VERSION
+from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="", tags=["Health"])
-
-
-def get_db():
-    """Dependência de banco"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("/")

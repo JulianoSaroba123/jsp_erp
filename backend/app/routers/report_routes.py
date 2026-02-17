@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from datetime import date
 from typing import Optional
 
-from app.database import SessionLocal
 from app.services.report_service import ReportService
 from app.schemas.report_schema import (
     DREResponse,
@@ -19,18 +18,10 @@ from app.schemas.report_schema import (
 )
 from app.auth import get_current_user
 from app.models.user import User
+from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="/reports/financial", tags=["Reports"])
-
-
-def get_db():
-    """Dependency para obter sessão do banco."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("/dre", response_model=DREResponse, status_code=status.HTTP_200_OK)
