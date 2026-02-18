@@ -154,10 +154,10 @@ def upgrade() -> None:
         COMMENT ON COLUMN core.financial_entries.status IS 'Status: pending, paid, canceled';
         COMMENT ON COLUMN core.financial_entries.occurred_at IS 'Data de ocorrência do lançamento';
         COMMENT ON CONSTRAINT unique_order_entry ON core.financial_entries IS 'Garante um único lançamento automático por pedido';
-        COMMENT ON INDEX idx_financial_entries_user_occurred IS 'Otimiza consultas multi-tenant ordenadas por data';
-        COMMENT ON INDEX idx_financial_entries_status IS 'Otimiza filtros por status (pending, paid, canceled)';
-        COMMENT ON INDEX idx_financial_entries_order IS 'Partial index para lançamentos vinculados a pedidos';
-        COMMENT ON INDEX idx_financial_entries_kind IS 'Otimiza filtros por tipo (revenue/expense)';
+        COMMENT ON INDEX core.idx_financial_entries_user_occurred IS 'Otimiza consultas multi-tenant ordenadas por data';
+        COMMENT ON INDEX core.idx_financial_entries_status IS 'Otimiza filtros por status (pending, paid, canceled)';
+        COMMENT ON INDEX core.idx_financial_entries_order IS 'Partial index para lançamentos vinculados a pedidos';
+        COMMENT ON INDEX core.idx_financial_entries_kind IS 'Otimiza filtros por tipo (revenue/expense)';
     """)
 
 
