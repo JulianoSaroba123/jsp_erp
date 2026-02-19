@@ -12,10 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.services.order_service import OrderService
-from app.schemas.order_schema import OrderCreate, OrderCreateRequest, OrderOut
+from app.schemas.order_schema import OrderCreate, OrderCreateRequest, OrderOut, OrderUpdate
 from app.security.deps import get_current_user, get_db, require_admin
 from app.models.user import User
-from app.exceptions.errors import ConflictError
+from app.exceptions.errors import ConflictError, NotFoundError, ValidationError
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -168,6 +168,79 @@ def get_order(
         # Sanitizar erro usando utilitário
         from app.core.errors import sanitize_error_message
         detail = sanitize_error_message(e, "Erro ao buscar pedido")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )
+
+
+@router.patch("/{order_id}", status_code=status.HTTP_200_OK, response_model=OrderOut)
+def update_order(
+    order_id: UUID,
+    order_data: OrderUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza pedido existente (PATCH).
+    
+    **Autenticação obrigatória (Bearer token)**
+    
+    Body (OrderUpdate - todos os campos opcionais):
+    - description: Nova descrição (opcional)
+    - total: Novo total (opcional, sincroniza com financeiro)
+    
+    **Regras de sincronização financeira:**
+    1. Financial pending + total alterado: Atualiza amount
+    2. Financial paid + total alterado: BLOQUEIA (400)
+    3. Financial canceled + total > 0: REABRE para pending
+    4. Total = 0 + pending financial: CANCELA financial
+    5. Sem financial + total > 0: CRIA financial idempotente
+    
+    **Multi-tenant:**
+    - User só pode atualizar seus próprios pedidos
+    - Admin pode atualizar qualquer pedido
+    - Anti-enumeration: 404 se pedido não existe ou não pertence ao user
+    """
+    try:
+        # Admin pode atualizar qualquer pedido, user comum só seus próprios
+        user_id_filter = current_user.id if current_user.role != "admin" else None
+        
+        # Se admin, buscar order e usar user_id do owner
+        if current_user.role == "admin":
+            order = OrderService.get_order(db=db, order_id=order_id)
+            if not order:
+                raise NotFoundError("Pedido não encontrado")
+            user_id_filter = order.user_id
+        
+        updated_order = OrderService.update_order(
+            db=db,
+            order_id=order_id,
+            user_id=user_id_filter,
+            description=order_data.description,
+            total=order_data.total
+        )
+        
+        return OrderOut.from_orm(updated_order)
+    
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        from app.core.errors import sanitize_error_message
+        detail = sanitize_error_message(e, "Erro ao atualizar pedido")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail
