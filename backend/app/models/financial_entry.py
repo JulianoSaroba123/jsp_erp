@@ -116,9 +116,17 @@ class FinancialEntry(Base):
         TIMESTAMP(timezone=True),
         nullable=True
     )
+    
+    # Soft Delete
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    deleted_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("core.users.id", ondelete="SET NULL"),
+        nullable=True
+    )
 
     # Relacionamentos
-    user = relationship("User", back_populates="financial_entries", lazy="select")
+    user = relationship("User", foreign_keys=[user_id], back_populates="financial_entries", lazy="select")
     order = relationship("Order", back_populates="financial_entry", lazy="select")
 
     def __repr__(self):

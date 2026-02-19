@@ -70,13 +70,11 @@ def upgrade() -> None:
         schema='core'
     )
     
-    # Comentários
-    op.execute("""
-        COMMENT ON TABLE core.users IS 'Tabela de usuários do sistema com autenticação';
-        COMMENT ON COLUMN core.users.password_hash IS 'Hash bcrypt da senha (nunca expor em APIs)';
-        COMMENT ON COLUMN core.users.role IS 'Papel do usuário: admin, user, technician, finance';
-        COMMENT ON COLUMN core.users.is_active IS 'Flag de ativação (soft delete)';
-    """)
+    # Comentários (1 op.execute por statement — psycopg v3 não aceita múltiplos)
+    op.execute("COMMENT ON TABLE core.users IS 'Tabela de usuários do sistema com autenticação'")
+    op.execute("COMMENT ON COLUMN core.users.password_hash IS 'Hash bcrypt da senha (nunca expor em APIs)'")
+    op.execute("COMMENT ON COLUMN core.users.role IS 'Papel do usuário: admin, user, technician, finance'")
+    op.execute("COMMENT ON COLUMN core.users.is_active IS 'Flag de ativação (soft delete)'")
     
     
     # =====================================
@@ -97,12 +95,10 @@ def upgrade() -> None:
     # Índice para user_id (multi-tenant queries)
     op.create_index('ix_core_orders_user_id', 'orders', ['user_id'], schema='core')
     
-    # Comentários
-    op.execute("""
-        COMMENT ON TABLE core.orders IS 'Tabela de pedidos/ordens do sistema';
-        COMMENT ON COLUMN core.orders.user_id IS 'FK para usuário dono do pedido (multi-tenant)';
-        COMMENT ON COLUMN core.orders.total IS 'Valor total do pedido';
-    """)
+    # Comentários (1 op.execute por statement — psycopg v3 não aceita múltiplos)
+    op.execute("COMMENT ON TABLE core.orders IS 'Tabela de pedidos/ordens do sistema'")
+    op.execute("COMMENT ON COLUMN core.orders.user_id IS 'FK para usuário dono do pedido (multi-tenant)'")
+    op.execute("COMMENT ON COLUMN core.orders.total IS 'Valor total do pedido'")
     
     
     # =====================================
@@ -146,19 +142,17 @@ def upgrade() -> None:
         WHERE order_id IS NOT NULL
     """)
     
-    # Comentários
-    op.execute("""
-        COMMENT ON TABLE core.financial_entries IS 'Lançamentos financeiros (receitas/despesas) com integração automática de pedidos';
-        COMMENT ON COLUMN core.financial_entries.order_id IS 'FK para order (NULL se lançamento manual)';
-        COMMENT ON COLUMN core.financial_entries.kind IS 'Tipo: revenue (receita) ou expense (despesa)';
-        COMMENT ON COLUMN core.financial_entries.status IS 'Status: pending, paid, canceled';
-        COMMENT ON COLUMN core.financial_entries.occurred_at IS 'Data de ocorrência do lançamento';
-        COMMENT ON CONSTRAINT unique_order_entry ON core.financial_entries IS 'Garante um único lançamento automático por pedido';
-        COMMENT ON INDEX core.idx_financial_entries_user_occurred IS 'Otimiza consultas multi-tenant ordenadas por data';
-        COMMENT ON INDEX core.idx_financial_entries_status IS 'Otimiza filtros por status (pending, paid, canceled)';
-        COMMENT ON INDEX core.idx_financial_entries_order IS 'Partial index para lançamentos vinculados a pedidos';
-        COMMENT ON INDEX core.idx_financial_entries_kind IS 'Otimiza filtros por tipo (revenue/expense)';
-    """)
+    # Comentários (1 op.execute por statement — psycopg v3 não aceita múltiplos)
+    op.execute("COMMENT ON TABLE core.financial_entries IS 'Lançamentos financeiros (receitas/despesas) com integração automática de pedidos'")
+    op.execute("COMMENT ON COLUMN core.financial_entries.order_id IS 'FK para order (NULL se lançamento manual)'")
+    op.execute("COMMENT ON COLUMN core.financial_entries.kind IS 'Tipo: revenue (receita) ou expense (despesa)'")
+    op.execute("COMMENT ON COLUMN core.financial_entries.status IS 'Status: pending, paid, canceled'")
+    op.execute("COMMENT ON COLUMN core.financial_entries.occurred_at IS 'Data de ocorrência do lançamento'")
+    op.execute("COMMENT ON CONSTRAINT unique_order_entry ON core.financial_entries IS 'Garante um único lançamento automático por pedido'")
+    op.execute("COMMENT ON INDEX core.idx_financial_entries_user_occurred IS 'Otimiza consultas multi-tenant ordenadas por data'")
+    op.execute("COMMENT ON INDEX core.idx_financial_entries_status IS 'Otimiza filtros por status (pending, paid, canceled)'")
+    op.execute("COMMENT ON INDEX core.idx_financial_entries_order IS 'Partial index para lançamentos vinculados a pedidos'")
+    op.execute("COMMENT ON INDEX core.idx_financial_entries_kind IS 'Otimiza filtros por tipo (revenue/expense)'")
 
 
 def downgrade() -> None:

@@ -44,7 +44,7 @@ class OrderOut(BaseModel):
     id: UUID
     user_id: UUID
     description: str
-    total: Decimal
+    total: float  # Changed from Decimal to float for JSON serialization
     created_at: datetime
 
     class Config:

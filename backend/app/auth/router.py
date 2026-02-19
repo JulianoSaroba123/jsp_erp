@@ -14,6 +14,7 @@ from .repository import UserRepository
 from .security import create_access_token, decode_token
 from app.models.user import User
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.exceptions.errors import ConflictError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -168,6 +169,8 @@ def register(
         )
         return UserResponse.model_validate(user)
     
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

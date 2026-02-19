@@ -99,9 +99,9 @@ class OrderService:
             total=total
         )
         
-        # INTEGRAÇÃO FINANCEIRA: Criar lançamento automático se total > 0
+        # INTEGRAÇ Financial: Criar lançamento automático se total > 0
         if total > 0:
-            financial_description = f"Pedido {order.id} - {description[:100]}"
+            financial_description = "Receita gerada automaticamente pelo pedido"
             FinancialService.create_from_order(
                 db=db,
                 order_id=order.id,
@@ -120,7 +120,7 @@ class OrderService:
     @staticmethod
     def delete_order(db: Session, order_id: UUID, user_id: Optional[UUID] = None, is_admin: bool = False) -> bool:
         """
-        Remove pedido.
+        Remove pedido (soft delete).
         
         **INTEGRAÇÃO FINANCEIRA (ETAPA 3A):**
         - Se existe lançamento financeiro vinculado:
@@ -135,7 +135,7 @@ class OrderService:
         Args:
             db: Sessão do banco
             order_id: ID do pedido a deletar
-            user_id: ID do usuário fazendo a operação (para validação)
+            user_id: ID do usuário fazendo a operação (obrigatório para soft delete)
             is_admin: Se o usuário é admin (bypass de validação)
         
         Returns:
@@ -143,20 +143,25 @@ class OrderService:
             
         Raises:
             ValueError: Se user tentou deletar pedido de outro usuário OU
-                       se lançamento financeiro está 'paid' (não pode deletar)
+                       se lançamento financeiro está 'paid' (não pode deletar) OU
+                       se user_id não foi fornecido
         """
         order = OrderRepository.get_by_id(db=db, order_id=order_id)
         if not order:
             return False
         
+        # user_id é obrigatório para soft delete (precisamos saber quem deletou)
+        if user_id is None:
+            raise ValueError("user_id é obrigatório para soft delete")
+        
         # Validação multi-tenant: user só pode deletar seus próprios pedidos
-        if not is_admin and user_id and order.user_id != user_id:
+        if not is_admin and order.user_id != user_id:
             raise ValueError("Você não tem permissão para deletar este pedido")
 
         # INTEGRAÇÃO FINANCEIRA: Cancelar lançamento se existir e status='pending'
         # Se status='paid', lança exceção (bloqueia delete)
         FinancialService.cancel_entry_by_order(db=db, order_id=order_id)
         
-        # Se chegou aqui, pode deletar o pedido
-        OrderRepository.delete(db=db, order=order)
+        # Soft delete do pedido
+        OrderRepository.soft_delete(db=db, order=order, deleted_by_user_id=user_id)
         return True

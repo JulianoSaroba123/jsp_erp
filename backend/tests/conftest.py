@@ -50,39 +50,29 @@ def get_test_database_url() -> str:
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """
-    Create tables in test database once per test session.
+    Verifica que o banco de teste existe com schema correto.
+
+    O banco deve ser preparado com: .\\prepare_test_db.ps1
+    Este fixture apenas valida a conectividade e importa os modelos.
     """
     test_db_url = get_test_database_url()
-    
-    # Create engine for test database
+
     from sqlalchemy import create_engine as create_engine_
     test_engine = create_engine_(test_db_url)
-    
-    # Import all models to ensure they're registered with Base.metadata
+
+    # Importar modelos para o SQLAlchemy mapear corretamente
     from app.models.user import User  # noqa
     from app.models.order import Order  # noqa
     from app.models.financial_entry import FinancialEntry  # noqa
-    
-    try:
-        # Try to create pgcrypto extension (may need superuser privileges)
-        try:
-            with test_engine.connect() as conn:
-                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
-                conn.commit()
-        except Exception:
-            # Extension might already exist or user doesn't have permission
-            # This is OK - extension should be pre-created by superuser
-            pass
-        
-        # Create all tables
-        Base.metadata.create_all(bind=test_engine)
-        
-        yield
-        
-    finally:
-        # Cleanup: drop all tables after tests
-        # Base.metadata.drop_all(bind=test_engine)
-        test_engine.dispose()
+    from app.models.audit_log import AuditLog  # noqa
+
+    # Verificar conectividade
+    with test_engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+
+    yield
+
+    test_engine.dispose()
 
 
 
@@ -102,7 +92,11 @@ def db_session(setup_test_database) -> Generator[Session, None, None]:
     try:
         yield session
     finally:
+        # Rollback any pending transaction to clear session state
+        session.rollback()
+        
         # Cleanup data in reverse order (FK constraints)
+        session.execute(text("TRUNCATE TABLE core.audit_logs CASCADE"))
         session.execute(text("TRUNCATE TABLE core.financial_entries CASCADE"))
         session.execute(text("TRUNCATE TABLE core.orders CASCADE"))
         session.execute(text("TRUNCATE TABLE core.users CASCADE"))
@@ -127,6 +121,24 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
         yield test_client
     
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client_authenticated(client: TestClient, seed_user_normal: User, auth_headers_user: dict) -> TestClient:
+    """
+    Test client pré-autenticado como usuário normal.
+    """
+    client.headers.update(auth_headers_user)
+    return client
+
+
+@pytest.fixture
+def client_admin(client: TestClient, seed_user_admin: User, auth_headers_admin: dict) -> TestClient:
+    """
+    Test client pré-autenticado como admin.
+    """
+    client.headers.update(auth_headers_admin)
+    return client
 
 
 # ============================================================================

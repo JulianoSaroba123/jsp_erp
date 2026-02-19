@@ -1,7 +1,8 @@
 """
 Router de Orders - endpoints HTTP.
 Responsabilidade: receber requests e chamar OrderService.
-NÃO contém lógica de negócio nem queries SQL.
+
+ contém lógica de negócio nem queries SQL.
 """
 
 from typing import List
@@ -10,23 +11,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.services.order_service import OrderService
 from app.schemas.order_schema import OrderCreate, OrderCreateRequest, OrderOut
-from app.auth import get_current_user
+from app.security.deps import get_current_user, get_db, require_admin
 from app.models.user import User
+from app.exceptions.errors import ConflictError
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
-
-
-def get_db():
-    """Dependency para obter sessão do banco."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("", status_code=status.HTTP_200_OK)
@@ -215,6 +207,12 @@ def delete_order(
         
         return {"ok": True}
     
+    except ConflictError as e:
+        # Erro de regra de negócio (ex: lançamento financeiro paid = não pode deletar)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
     except ValueError as e:
         # Erro de permissão (tentou deletar pedido de outro usuário)
         raise HTTPException(
@@ -226,6 +224,61 @@ def delete_order(
     except Exception as e:
         from app.core.errors import sanitize_error_message
         detail = sanitize_error_message(e, "Erro ao deletar pedido")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )
+
+
+@router.post("/{order_id}/restore", status_code=status.HTTP_200_OK)
+def restore_order(
+    order_id: UUID,
+    current_user: User = Depends(require_admin),  # Apenas admin pode restaurar
+    db: Session = Depends(get_db)
+):
+    """
+    Restaura pedido soft-deleted (apenas admin).
+    
+    **Autenticação obrigatória: ADMIN role**
+    
+    Path params:
+    - order_id: UUID do pedido a restaurar
+    
+    Returns:
+        OrderOut: Pedido restaurado
+        
+    Raises:
+        404: Pedido não encontrado ou não está deletado
+        403: Usuário não é admin
+    """
+    from app.repositories.order_repository import OrderRepository
+    
+    try:
+        # Busca pedido incluindo soft-deleted
+        order = OrderRepository.get_by_id(db=db, order_id=order_id, include_deleted=True)
+        
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Pedido {order_id} não encontrado"
+            )
+        
+        # Verifica se está realmente deletado
+        if order.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pedido não está deletado"
+            )
+        
+        # Restaura
+        restored = OrderRepository.restore(db=db, order=order)
+        return OrderOut.from_orm(restored)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        from app.core.errors import sanitize_error_message
+        detail = sanitize_error_message(e, "Erro ao restaurar pedido")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail

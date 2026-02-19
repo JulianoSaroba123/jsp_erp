@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from app.models.financial_entry import FinancialEntry
 from app.repositories.financial_repository import FinancialRepository
+from app.exceptions.errors import ConflictError
 
 
 class FinancialService:
@@ -298,7 +299,7 @@ class FinancialService:
 
         if entry.status == 'paid':
             # Lançamento pago não pode ser cancelado automaticamente
-            raise ValueError(
+            raise ConflictError(
                 f"Não é possível deletar pedido: lançamento financeiro já está 'paid'. "
                 "Solicite estorno manual ao financeiro."
             )

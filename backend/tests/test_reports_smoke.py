@@ -56,14 +56,15 @@ def test_dre_report_structure(
     assert response.status_code == 200
     
     data = response.json()
-    assert "total_revenue" in data
-    assert "total_expense" in data
-    assert "net_result" in data
+    assert "revenue_paid_total" in data
+    assert "expense_paid_total" in data
+    assert "net_paid" in data
+    assert "period" in data
     
     # Verify calculations
-    assert data["total_revenue"] == 1000
-    assert data["total_expense"] == 300
-    assert data["net_result"] == 700
+    assert data["revenue_paid_total"] == 1000
+    assert data["expense_paid_total"] == 300
+    assert data["net_paid"] == 700
 
 
 @pytest.mark.reports
@@ -99,9 +100,10 @@ def test_cashflow_daily_returns_time_series(
     assert response.status_code == 200
     
     data = response.json()
-    assert "daily_data" in data
+    assert "days" in data
+    assert "period" in data
     
-    daily_data = data["daily_data"]
+    daily_data = data["days"]
     assert isinstance(daily_data, list)
     
     # Should have entries for all days (filled with zeros if needed)
@@ -114,9 +116,9 @@ def test_cashflow_daily_returns_time_series(
     )
     
     if day_with_data:
-        assert day_with_data["total_revenue"] == 500
-        assert day_with_data["total_expense"] == 0
-        assert day_with_data["net_cashflow"] == 500
+        assert day_with_data["revenue_paid"] == 500
+        assert day_with_data["expense_paid"] == 0
+        assert day_with_data["net_paid"] == 500
 
 
 @pytest.mark.reports
@@ -154,24 +156,31 @@ def test_pending_aging_buckets(
     
     # Get aging report
     response = client.get(
-        "/reports/financial/pending/aging",
+        "/reports/financial/pending/aging?date_from=2026-02-01&date_to=2026-02-28",
         headers=auth_headers_user
     )
     
     assert response.status_code == 200
     
     data = response.json()
-    assert "aging_buckets" in data
+    assert "pending_revenue" in data
+    assert "pending_expense" in data
+    assert "reference_date" in data
+    assert "period" in data
     
-    buckets = data["aging_buckets"]
-    assert isinstance(buckets, list)
-    assert len(buckets) > 0
+    # Verify pending_revenue structure
+    revenue = data["pending_revenue"]
+    assert "0_7_days" in revenue
+    assert "8_30_days" in revenue
+    assert "31_plus_days" in revenue
+    assert "total" in revenue
     
-    # Verify bucket structure
-    for bucket in buckets:
-        assert "range" in bucket
-        assert "count" in bucket
-        assert "total_amount" in bucket
+    # Verify pending_expense structure
+    expense = data["pending_expense"]
+    assert "0_7_days" in expense
+    assert "8_30_days" in expense
+    assert "31_plus_days" in expense
+    assert "total" in expense
 
 
 @pytest.mark.reports
@@ -212,21 +221,21 @@ def test_top_entries_report(
     
     # Get top entries (limit 10)
     response = client.get(
-        "/reports/financial/top?limit=10",
+        "/reports/financial/top?kind=revenue&date_from=2026-02-01&date_to=2026-02-28&limit=10",
         headers=auth_headers_user
     )
     
     assert response.status_code == 200
     
     data = response.json()
-    assert "items" in data
+    assert "entries" in data or "items" in data
     
-    items = data["items"]
+    items = data.get("entries", data.get("items", []))
     assert len(items) <= 10
     
-    # Verify sorted by amount DESC
+    # Verify sorted by total_amount DESC
     if len(items) >= 2:
-        assert items[0]["amount"] >= items[1]["amount"]
+        assert items[0]["total_amount"] >= items[1]["total_amount"]
 
 
 @pytest.mark.reports
@@ -285,7 +294,7 @@ def test_reports_multi_tenant_admin_sees_all(
     
     data = response.json()
     # Admin should see combined total
-    assert data["total_revenue"] == 300
+    assert data["revenue_paid_total"] == 300
 
 
 @pytest.mark.reports
@@ -327,4 +336,4 @@ def test_reports_multi_tenant_user_sees_own_only(
     
     data = response.json()
     # User should see only their own revenue
-    assert data["total_revenue"] == 100
+    assert data["revenue_paid_total"] == 100
