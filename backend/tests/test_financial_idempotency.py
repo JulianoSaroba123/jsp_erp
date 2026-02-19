@@ -161,7 +161,9 @@ def test_delete_order_removes_financial_entry(
     auth_headers_user: dict
 ):
     """
-    Test that deleting order also removes associated financial entry (if pending).
+    Test that deleting order (soft delete) cancels associated financial entry (if pending).
+    With soft delete, the order remains in DB so order_id FK is preserved.
+    The financial entry status changes to 'canceled'.
     """
     # Create order with financial
     order = Order(
@@ -185,18 +187,21 @@ def test_delete_order_removes_financial_entry(
     db_session.commit()
     entry_id = entry.id
     
-    # Delete order
+    # Delete order (soft delete)
     response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
     assert response.status_code == 200
     
-    # Verify financial entry still exists (FK is SET NULL)
+    # Verify financial entry still exists with order_id preserved
+    # (soft delete: order is not removed, so FK stays intact)
+    db_session.expire_all()
     financial = db_session.query(FinancialEntry).filter(
         FinancialEntry.id == entry_id
     ).first()
     
-    # Financial entry should exist but order_id should be NULL
+    # Financial entry should exist and order_id preserved (soft delete keeps the order row)
     assert financial is not None
-    assert financial.order_id is None
+    assert financial.order_id == order.id  # order still in DB (soft deleted)
+    assert financial.status == "canceled"  # but entry was canceled
 
 
 @pytest.mark.financial

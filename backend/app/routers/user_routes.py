@@ -11,7 +11,7 @@ from typing import List
 from app.services.user_service import UserService
 from app.schemas.user_schema import UserCreate, UserUpdate, UserResponse
 from app.security.password import hash_password
-from app.security.deps import get_db  # CENTRALIZADO
+from app.security.deps import get_db
 
 
 router = APIRouter(prefix="/users", tags=["Users"])

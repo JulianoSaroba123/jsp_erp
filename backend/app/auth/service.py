@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from .repository import UserRepository
 from .security import hash_password, verify_password
+from app.exceptions.errors import ConflictError
 
 
 class AuthService:
@@ -47,7 +48,7 @@ class AuthService:
         # Validar email único
         email_normalized = email.lower().strip()
         if UserRepository.get_by_email(db, email_normalized):
-            raise ValueError("E-mail já cadastrado.")
+            raise ConflictError("E-mail já cadastrado.")
         
         # Validar senha (mínimo 6 caracteres)
         if len(password) < 6:

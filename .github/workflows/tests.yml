@@ -16,6 +16,10 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: read
 
     services:
       postgres:
@@ -45,6 +49,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5

@@ -31,14 +31,17 @@ class Order(Base):
     description = Column(Text, nullable=False)
     total = Column(Numeric(12, 2), nullable=False, server_default=text("0"))
     created_at = Column(TIMESTAMP, server_default=text("now()"))
-    updated_at = Column(
-        TIMESTAMP,
-        server_default=text("now()"),
-        onupdate=text("now()")  # Atualiza automaticamente
+    
+    # Soft Delete
+    deleted_at = Column(TIMESTAMP, nullable=True, index=True)
+    deleted_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("core.users.id", ondelete="SET NULL"),
+        nullable=True
     )
 
     # Relacionamentos
-    user = relationship("User", back_populates="orders", lazy="select")
+    user = relationship("User", foreign_keys=[user_id], back_populates="orders", lazy="select")
     financial_entry = relationship(
         "FinancialEntry",
         back_populates="order",

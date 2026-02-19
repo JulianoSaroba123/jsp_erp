@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.config import APP_NAME, APP_VERSION
-from app.security.deps import get_db  # CENTRALIZADO
+from app.security.deps import get_db
 
 
 router = APIRouter(prefix="", tags=["Health"])

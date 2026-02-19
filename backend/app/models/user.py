@@ -30,8 +30,18 @@ class User(Base):
     created_at = Column(TIMESTAMP, server_default=text("now()"))
 
     # Relacionamentos
-    orders = relationship("Order", back_populates="user", lazy="select")
-    financial_entries = relationship("FinancialEntry", back_populates="user", lazy="select")
+    orders = relationship(
+        "Order", 
+        back_populates="user", 
+        lazy="select",
+        foreign_keys="[Order.user_id]"
+    )
+    financial_entries = relationship(
+        "FinancialEntry", 
+        back_populates="user", 
+        lazy="select",
+        foreign_keys="[FinancialEntry.user_id]"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', role='{self.role}')>"

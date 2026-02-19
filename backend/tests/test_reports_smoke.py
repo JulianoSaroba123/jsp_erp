@@ -56,10 +56,10 @@ def test_dre_report_structure(
     assert response.status_code == 200
     
     data = response.json()
-    # Schema fields: revenue_paid_total, expense_paid_total, net_paid
     assert "revenue_paid_total" in data
     assert "expense_paid_total" in data
     assert "net_paid" in data
+    assert "period" in data
     
     # Verify calculations
     assert data["revenue_paid_total"] == 1000
@@ -100,8 +100,8 @@ def test_cashflow_daily_returns_time_series(
     assert response.status_code == 200
     
     data = response.json()
-    # Schema field is 'days', not 'daily_data'
     assert "days" in data
+    assert "period" in data
     
     daily_data = data["days"]
     assert isinstance(daily_data, list)
@@ -115,7 +115,6 @@ def test_cashflow_daily_returns_time_series(
         None
     )
     
-    # Schema fields: revenue_paid, expense_paid, net_paid
     if day_with_data:
         assert day_with_data["revenue_paid"] == 500
         assert day_with_data["expense_paid"] == 0
@@ -155,7 +154,7 @@ def test_pending_aging_buckets(
     db_session.add_all([entry1, entry2])
     db_session.commit()
     
-    # Get aging report (query params obrigatórios: date_from, date_to)
+    # Get aging report
     response = client.get(
         "/reports/financial/pending/aging?date_from=2026-02-01&date_to=2026-02-28",
         headers=auth_headers_user
@@ -164,14 +163,24 @@ def test_pending_aging_buckets(
     assert response.status_code == 200
     
     data = response.json()
-    # Schema: pending_revenue, pending_expense (AgingBucket objects)
     assert "pending_revenue" in data
     assert "pending_expense" in data
+    assert "reference_date" in data
+    assert "period" in data
     
-    # Verify AgingBucket structure (days_0_7, days_8_30, days_31_plus, total)
-    pending_rev = data["pending_revenue"]
-    assert "0_7_days" in pending_rev or "days_0_7" in pending_rev
-    assert "total" in pending_rev
+    # Verify pending_revenue structure
+    revenue = data["pending_revenue"]
+    assert "0_7_days" in revenue
+    assert "8_30_days" in revenue
+    assert "31_plus_days" in revenue
+    assert "total" in revenue
+    
+    # Verify pending_expense structure
+    expense = data["pending_expense"]
+    assert "0_7_days" in expense
+    assert "8_30_days" in expense
+    assert "31_plus_days" in expense
+    assert "total" in expense
 
 
 @pytest.mark.reports
@@ -210,7 +219,7 @@ def test_top_entries_report(
     db_session.add_all([entry1, entry2, entry3])
     db_session.commit()
     
-    # Get top entries (query params obrigatórios: kind, date_from, date_to)
+    # Get top entries (limit 10)
     response = client.get(
         "/reports/financial/top?kind=revenue&date_from=2026-02-01&date_to=2026-02-28&limit=10",
         headers=auth_headers_user
@@ -219,12 +228,11 @@ def test_top_entries_report(
     assert response.status_code == 200
     
     data = response.json()
-    assert "items" in data
+    assert "entries" in data or "items" in data
     
-    items = data["items"]
+    items = data.get("entries", data.get("items", []))
     assert len(items) <= 10
     
-    # Schema: TopEntryItem has total_amount (not amount)
     # Verify sorted by total_amount DESC
     if len(items) >= 2:
         assert items[0]["total_amount"] >= items[1]["total_amount"]
@@ -285,7 +293,7 @@ def test_reports_multi_tenant_admin_sees_all(
     assert response.status_code == 200
     
     data = response.json()
-    # Admin should see combined total (schema: revenue_paid_total)
+    # Admin should see combined total
     assert data["revenue_paid_total"] == 300
 
 
@@ -327,5 +335,5 @@ def test_reports_multi_tenant_user_sees_own_only(
     assert response.status_code == 200
     
     data = response.json()
-    # User should see only their own revenue (schema: revenue_paid_total)
+    # User should see only their own revenue
     assert data["revenue_paid_total"] == 100

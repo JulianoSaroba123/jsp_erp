@@ -33,23 +33,30 @@ class FinancialRepository:
         return entry
 
     @staticmethod
-    def get_by_id(db: Session, entry_id: UUID) -> Optional[FinancialEntry]:
-        """Busca lançamento por ID."""
-        return db.query(FinancialEntry).filter(FinancialEntry.id == entry_id).first()
+    def get_by_id(db: Session, entry_id: UUID, include_deleted: bool = False) -> Optional[FinancialEntry]:
+        """Busca lançamento por ID (exclui soft-deleted por padrão)."""
+        query = db.query(FinancialEntry).filter(FinancialEntry.id == entry_id)
+        if not include_deleted:
+            query = query.filter(FinancialEntry.deleted_at.is_(None))
+        return query.first()
     
     @staticmethod
-    def get_by_order_id(db: Session, order_id: UUID) -> Optional[FinancialEntry]:
+    def get_by_order_id(db: Session, order_id: UUID, include_deleted: bool = False) -> Optional[FinancialEntry]:
         """
         Busca lançamento vinculado a um pedido específico.
         
         Args:
             db: Sessão SQLAlchemy
             order_id: UUID do pedido
+            include_deleted: Se True, inclui soft-deleted
             
         Returns:
             FinancialEntry ou None se não existir
         """
-        return db.query(FinancialEntry).filter(FinancialEntry.order_id == order_id).first()
+        query = db.query(FinancialEntry).filter(FinancialEntry.order_id == order_id)
+        if not include_deleted:
+            query = query.filter(FinancialEntry.deleted_at.is_(None))
+        return query.first()
 
     @staticmethod
     def list_paginated(
@@ -60,10 +67,12 @@ class FinancialRepository:
         status: Optional[str] = None,
         kind: Optional[str] = None,
         date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None
+        date_to: Optional[datetime] = None,
+        include_deleted: bool = False
     ) -> List[FinancialEntry]:
         """
         Lista lançamentos com paginação e filtros opcionais.
+        Por padrão exclui soft-deleted.
         
         Args:
             db: Sessão SQLAlchemy
@@ -74,12 +83,17 @@ class FinancialRepository:
             kind: Filtro opcional por tipo (revenue/expense)
             date_from: Data inicial (occurred_at >= date_from)
             date_to: Data final (occurred_at <= date_to)
+            include_deleted: Se True, inclui soft-deleted
             
         Returns:
             Lista de FinancialEntry
         """
         offset = (page - 1) * page_size
         query = db.query(FinancialEntry)
+        
+        # Filtro de soft delete
+        if not include_deleted:
+            query = query.filter(FinancialEntry.deleted_at.is_(None))
 
         # Filtros opcionais
         if user_id:
@@ -109,10 +123,12 @@ class FinancialRepository:
         status: Optional[str] = None,
         kind: Optional[str] = None,
         date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None
+        date_to: Optional[datetime] = None,
+        include_deleted: bool = False
     ) -> int:
         """
         Conta total de lançamentos com filtros opcionais.
+        Por padrão exclui soft-deleted.
         
         Args:
             db: Sessão SQLAlchemy
@@ -121,11 +137,16 @@ class FinancialRepository:
             kind: Filtro opcional por tipo
             date_from: Data inicial
             date_to: Data final
+            include_deleted: Se True, inclui soft-deleted
             
         Returns:
             Número total de registros
         """
         query = db.query(FinancialEntry)
+        
+        # Filtro de soft delete
+        if not include_deleted:
+            query = query.filter(FinancialEntry.deleted_at.is_(None))
 
         # Aplicar mesmos filtros da lista
         if user_id:
@@ -161,13 +182,51 @@ class FinancialRepository:
         return entry
     
     @staticmethod
-    def delete(db: Session, entry: FinancialEntry) -> None:
+    def soft_delete(db: Session, entry: FinancialEntry, deleted_by_user_id: UUID) -> FinancialEntry:
         """
-        Deleta lançamento (uso raro - preferir cancelamento via status).
+        Soft delete: marca lançamento como deletado sem remover do banco.
         
         Args:
             db: Sessão SQLAlchemy
-            entry: FinancialEntry a ser deletado
+            entry: FinancialEntry a ser soft-deleted
+            deleted_by_user_id: ID do usuário que está deletando
+            
+        Returns:
+            FinancialEntry atualizado
+        """
+        entry.deleted_at = datetime.utcnow()
+        entry.deleted_by = deleted_by_user_id
+        db.commit()
+        db.refresh(entry)
+        return entry
+    
+    @staticmethod
+    def restore(db: Session, entry: FinancialEntry) -> FinancialEntry:
+        """
+        Restaura lançamento soft-deleted.
+        
+        Args:
+            db: Sessão SQLAlchemy
+            entry: FinancialEntry a ser restaurado
+            
+        Returns:
+            FinancialEntry restaurado
+        """
+        entry.deleted_at = None
+        entry.deleted_by = None
+        db.commit()
+        db.refresh(entry)
+        return entry
+    
+    @staticmethod
+    def hard_delete(db: Session, entry: FinancialEntry) -> None:
+        """
+        Hard delete: remove permanentemente do banco (uso raro).
+        Preferir soft_delete ou cancelamento via status.
+        
+        Args:
+            db: Sessão SQLAlchemy
+            entry: FinancialEntry a ser deletado permanentemente
         """
         db.delete(entry)
         db.commit()
