@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.models.order import Order
 from app.models.user import User
+from app.models.financial_entry import FinancialEntry
 from app.repositories.order_repository import OrderRepository
 from app.services.financial_service import FinancialService
+from app.exceptions.errors import NotFoundError, ValidationError
 
 
 class OrderService:
@@ -101,7 +103,7 @@ class OrderService:
         
         # INTEGRAÇ Financial: Criar lançamento automático se total > 0
         if total > 0:
-            financial_description = "Receita gerada automaticamente pelo pedido"
+            financial_description = f"Pedido {order.id} - {description}"
             FinancialService.create_from_order(
                 db=db,
                 order_id=order.id,
@@ -116,6 +118,132 @@ class OrderService:
     def get_order(db: Session, order_id: UUID) -> Optional[Order]:
         """Busca pedido por ID."""
         return OrderRepository.get_by_id(db=db, order_id=order_id)
+
+    @staticmethod
+    def update_order(
+        db: Session,
+        order_id: UUID,
+        user_id: UUID,
+        description: Optional[str] = None,
+        total: Optional[float] = None
+    ) -> Order:
+        """
+        Atualiza pedido com sincronização financeira automática.
+        
+        **INTEGRAÇÃO FINANCEIRA (ETAPA 5):**
+        
+        Regras de negócio:
+        1. **Financial pending + total change**: Atualiza amount da entry
+        2. **Financial paid + total change**: BLOQUEIA (ValidationError)
+        3. **Financial canceled + total > 0**: REABRE entry (pending)
+        4. **Total = 0 + pending financial**: CANCELA entry
+        5. **No financial + total > 0**: CRIA entry idempotente
+        
+        Multi-tenant:
+        - User só pode atualizar seus próprios pedidos
+        - Anti-enumeration: 404 se order não existe ou não pertence ao user
+        
+        Args:
+            db: Sessão SQLAlchemy
+            order_id: UUID do pedido
+            user_id: UUID do usuário autenticado
+            description: Nova descrição (None = mantém atual)
+            total: Novo total (None = mantém atual)
+        
+        Returns:
+            Order atualizado
+        
+        Raises:
+            NotFoundError: Order não encontrado ou não pertence ao user
+            ValidationError: Tentativa de alterar total com financial paid
+        """
+        from sqlalchemy.exc import IntegrityError
+        
+        # 1. Buscar order com filtro multi-tenant
+        order = OrderRepository.get_by_id_and_user(db, order_id, user_id)
+        if not order:
+            raise NotFoundError("Pedido não encontrado")
+        
+        # 2. Buscar financial entry associada (se existir)
+        financial_entry = (
+            db.query(FinancialEntry)
+            .filter(FinancialEntry.order_id == order_id)
+            .first()
+        )
+        
+        # 3. Validar regras de negócio se total está sendo alterado
+        if total is not None and total != float(order.total):
+            # 3.1. Bloquear se financial está paid
+            if financial_entry and financial_entry.status == "paid":
+                raise ValidationError(
+                    "Não é possível alterar total de pedido com lançamento financeiro pago"
+                )
+        
+        # 4. Atualizar order (description e/ou total)
+        if description is not None:
+            order.description = description
+        
+        if total is not None:
+            order.total = total
+            
+            # 5. Sincronizar financial entry
+            if total > 0:
+                if financial_entry:
+                    # 5.1. Atualizar entry existente
+                    financial_entry.amount = total
+                    
+                    # 5.2. Reabrir se estava canceled
+                    if financial_entry.status == "canceled":
+                        financial_entry.status = "pending"
+                
+                else:
+                    # 5.3. Criar nova entry (idempotente via UNIQUE order_id)
+                    try:
+                        new_financial = FinancialEntry(
+                            order_id=order_id,
+                            user_id=user_id,
+                            kind="revenue",
+                            status="pending",
+                            amount=total,
+                            description=f"Pedido {order_id} - {order.description}"
+                        )
+                        db.add(new_financial)
+                        db.flush()  # Testa UNIQUE constraint sem commit
+                    
+                    except IntegrityError:
+                        # Entry foi criado em race condition (idempotência)
+                        # Rollback REVERTE TUDO - precisamos reaplicar mudanças no order
+                        db.rollback()
+                        
+                        # Re-buscar order (sessão foi revertida)
+                        order = OrderRepository.get_by_id_and_user(db, order_id, user_id)
+                        if not order:
+                            raise NotFoundError("Pedido não encontrado após rollback")
+                        
+                        # Reaplicar mudanças que foram perdidas no rollback
+                        if description is not None:
+                            order.description = description
+                        if total is not None:
+                            order.total = total
+                        
+                        # Atualizar financial entry existente
+                        financial_entry = (
+                            db.query(FinancialEntry)
+                            .filter(FinancialEntry.order_id == order_id)
+                            .first()
+                        )
+                        if financial_entry:
+                            financial_entry.amount = total
+            
+            elif total == 0:
+                # 5.4. Cancelar financial entry se total = 0
+                if financial_entry and financial_entry.status == "pending":
+                    financial_entry.status = "canceled"
+        
+        # 6. Commit
+        db.commit()
+        db.refresh(order)
+        return order
 
     @staticmethod
     def delete_order(db: Session, order_id: UUID, user_id: Optional[UUID] = None, is_admin: bool = False) -> bool:

@@ -1,7 +1,7 @@
 """Add soft delete columns
 
 Revision ID: 003
-Revises: 002
+Revises: 002_audit_logs, 002_add_orders_updated_at (MERGE)
 Create Date: 2026-02-18 20:00:00.000000
 
 """
@@ -13,7 +13,8 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '003'
-down_revision: Union[str, None] = '002_audit_logs'
+# MERGE: Esta migration une dois branches paralelos
+down_revision: Union[str, tuple, None] = ('002_audit_logs', '002_add_orders_updated_at')
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

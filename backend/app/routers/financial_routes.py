@@ -20,6 +20,7 @@ from app.schemas.financial_schema import (
 )
 from app.security.deps import get_current_user, get_db
 from app.models.user import User
+from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="/financial/entries", tags=["Financeiro"])

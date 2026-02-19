@@ -27,9 +27,14 @@ from alembic import context
 # =====================================
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Priorizar DATABASE_URL_TEST (para CI/testes), fallback para DATABASE_URL (dev/prod)
+DATABASE_URL = os.getenv("DATABASE_URL_TEST") or os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL not set for Alembic")
+    raise RuntimeError(
+        "DATABASE_URL or DATABASE_URL_TEST must be set for Alembic.\n"
+        "CI/Tests: Set DATABASE_URL_TEST\n"
+        "Dev/Prod: Set DATABASE_URL"
+    )
 
 # =====================================
 # Configurar path para importar módulos do app
