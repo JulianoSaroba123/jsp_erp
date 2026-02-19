@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.models.order import Order
 from app.models.user import User
+from app.models.financial_entry import FinancialEntry
 from app.repositories.order_repository import OrderRepository
 from app.services.financial_service import FinancialService
+from app.exceptions.errors import NotFoundError, ValidationError
 
 
 class OrderService:
@@ -101,7 +103,7 @@ class OrderService:
         
         # INTEGRAÇ Financial: Criar lançamento automático se total > 0
         if total > 0:
-            financial_description = "Receita gerada automaticamente pelo pedido"
+            financial_description = f"Pedido {order.id} - {description}"
             FinancialService.create_from_order(
                 db=db,
                 order_id=order.id,
@@ -203,15 +205,28 @@ class OrderService:
                             kind="revenue",
                             status="pending",
                             amount=total,
-                            description=f"Receita gerada automaticamente pelo pedido {order_id}"
+                            description=f"Pedido {order_id} - {order.description}"
                         )
                         db.add(new_financial)
                         db.flush()  # Testa UNIQUE constraint sem commit
                     
                     except IntegrityError:
                         # Entry foi criado em race condition (idempotência)
-                        # Rollback apenas da tentativa de INSERT
+                        # Rollback REVERTE TUDO - precisamos reaplicar mudanças no order
                         db.rollback()
+                        
+                        # Re-buscar order (sessão foi revertida)
+                        order = OrderRepository.get_by_id_and_user(db, order_id, user_id)
+                        if not order:
+                            raise NotFoundError("Pedido não encontrado após rollback")
+                        
+                        # Reaplicar mudanças que foram perdidas no rollback
+                        if description is not None:
+                            order.description = description
+                        if total is not None:
+                            order.total = total
+                        
+                        # Atualizar financial entry existente
                         financial_entry = (
                             db.query(FinancialEntry)
                             .filter(FinancialEntry.order_id == order_id)
