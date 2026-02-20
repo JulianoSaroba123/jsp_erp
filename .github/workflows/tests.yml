@@ -12,6 +12,7 @@ on:
       - main
       - master
       - develop
+  workflow_dispatch:  # ✅ Permite disparo manual via GitHub UI
 
 jobs:
   pytest:
