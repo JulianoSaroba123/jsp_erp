@@ -172,6 +172,9 @@ def register(
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValueError as e:
+        # Email duplicado = 409 Conflict (não 400)
+        if "já cadastrado" in str(e).lower():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 

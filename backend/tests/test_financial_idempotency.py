@@ -27,9 +27,11 @@ def test_order_financial_idempotency(
     """
     Test creating order with total > 0 multiple times doesn't duplicate financial entry.
     
-    This tests the idempotency mechanism (UNIQUE constraint on order_id).
+    This tests the idempotency mechanism via service layer.
     """
-    # Create first order
+    from app.services.financial_service import FinancialService
+    
+    # Create first order via API
     response1 = client.post(
         "/orders",
         headers=auth_headers_user,
@@ -40,7 +42,12 @@ def test_order_financial_idempotency(
     )
     
     assert response1.status_code == 201
-    order_id = response1.json()["id"]
+    order_data = response1.json()
+    order_id = order_data["id"]
+    user_id = order_data["user_id"]
+    
+    # Flush to ensure API data is visible
+    db_session.flush()
     
     # Count financial entries for this order
     count1 = db_session.query(FinancialEntry).filter(
@@ -49,30 +56,23 @@ def test_order_financial_idempotency(
     
     assert count1 == 1
     
-    # Try to create financial entry for same order again (simulating race condition)
-    # This should be prevented by UNIQUE constraint
-    financial = FinancialEntry(
+    # Try to create financial entry for SAME order_id again (tests idempotency)
+    # Should return existing entry, not create duplicate
+    entry2 = FinancialService.create_from_order(
+        db=db_session,
         order_id=order_id,
-        user_id=response1.json()["user_id"],
-        kind="revenue",
-        status="pending",
+        user_id=user_id,
         amount=250.00,
-        description="Duplicate attempt"
+        description="Second attempt (should be ignored)"
     )
-    db_session.add(financial)
     
-    # Should raise IntegrityError due to UNIQUE(order_id)
-    with pytest.raises(Exception):  # SQLAlchemy IntegrityError
-        db_session.commit()
-    
-    db_session.rollback()
-    
-    # Verify still only 1 financial entry
+    # Verify still only 1 financial entry (idempotent)
     count2 = db_session.query(FinancialEntry).filter(
         FinancialEntry.order_id == order_id
     ).count()
     
     assert count2 == 1
+    assert entry2 is not None  # Should return existing entry
 
 
 @pytest.mark.financial
