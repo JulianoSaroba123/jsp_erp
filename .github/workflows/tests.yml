@@ -45,6 +45,7 @@ jobs:
       ENVIRONMENT: test
       DEBUG: "False"
       CORS_ALLOW_ORIGINS: "*"
+      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
       - name: Checkout
