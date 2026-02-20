@@ -1,0 +1,30 @@
+name: trigger-test
+
+# 🔬 DIAGNÓSTICO: Workflow mínimo para testar se o problema é trigger ou ambiente
+on:
+  push:
+    branches:
+      - master
+      - main
+      - "**"  # TODOS os branches
+  workflow_dispatch:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ✅ CI Trigger Confirmado
+        run: |
+          echo "🎉 CI OK - Workflow disparou com sucesso!"
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Default: ${{ github.event.repository.default_branch }}"
+          echo "Commit: ${{ github.sha }}"
+          
+      - name: 📋 Repository Info
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Run Number: ${{ github.run_number }}"
