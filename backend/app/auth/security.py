@@ -32,9 +32,7 @@ def hash_password(password: str) -> str:
     Note:
         Bcrypt tem limite de 72 bytes. Senhas maiores são truncadas.
     """
-    # Bcrypt tem limite de 72 bytes, truncar se necessário
-    password_bytes = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    return pwd_context.hash(password_bytes)
+    return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
