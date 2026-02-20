@@ -17,9 +17,6 @@ on:
         description: 'Branch to test'
         required: false
         default: 'master'
-  # 🔥 FORÇA disparo via schedule (fallback se nada funcionar)
-  schedule:
-    - cron: '*/30 * * * *'  # A cada 30min (remover depois de validar)
 
 jobs:
   pytest:
@@ -27,8 +24,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/master' ||
-      github.base_ref == 'refs/heads/master' ||
-      github.event_name == 'schedule'
+      github.base_ref == 'refs/heads/master'
     
     runs-on: ubuntu-latest
     
@@ -60,6 +56,8 @@ jobs:
       DEBUG: "False"
       CORS_ALLOW_ORIGINS: "*"
       PYTHONPATH: ${{ github.workspace }}/backend
+      CORS_ALLOW_ORIGINS: "*"
+      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
       - name: 📊 Workflow Context Debug
@@ -74,6 +72,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
