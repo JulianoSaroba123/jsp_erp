@@ -6,45 +6,25 @@ usando bcrypt para senhas e JWT (HS256) para tokens de acesso.
 """
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-
-
-# Contexto de hash de senha (bcrypt)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
     """
     Gera hash bcrypt de uma senha em texto plano.
-    
-    Args:
-        password: Senha em texto plano
-        
-    Returns:
-        Hash bcrypt da senha
-        
-    Example:
-        >>> hash_password("minhasenha123")
-        '$2b$12$...'
-    
-    Note:
-        Bcrypt tem limite de 72 bytes. Senhas maiores são truncadas.
+    Usa bcrypt diretamente para compatibilidade com Python 3.11+.
     """
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifica se uma senha em texto plano corresponde ao hash armazenado.
-    
-    Args:
-        plain_password: Senha em texto plano fornecida pelo usuário
-        hashed_password: Hash bcrypt armazenado no banco de dados
-        
-    Returns:
-        True se a senha estiver correta, False caso contrário
+    Usa bcrypt diretamente para compatibilidade com Python 3.11+.
         
     Example:
         >>> verify_password("minhasenha123", "$2b$12$...")
@@ -53,9 +33,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Note:
         Bcrypt tem limite de 72 bytes. Trunca a senha antes de verificar.
     """
-    # Bcrypt tem limite de 72 bytes, truncar antes de verificar
-    password_bytes = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    return pwd_context.verify(password_bytes, hashed_password)
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 def create_access_token(
