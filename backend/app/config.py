@@ -11,8 +11,8 @@ load_dotenv()
 # ENVIRONMENT
 # ============================================================================
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
-if ENVIRONMENT not in ["development", "production"]:
-    raise ValueError(f"ENVIRONMENT inválido: '{ENVIRONMENT}'. Use 'development' ou 'production'.")
+if ENVIRONMENT not in ["development", "production", "test"]:
+    raise ValueError(f"ENVIRONMENT inválido: '{ENVIRONMENT}'. Use 'development', 'test' ou 'production'.")
 
 # ============================================================================
 # DATABASE
@@ -54,11 +54,11 @@ if ENVIRONMENT == "production":
         )
     CORS_ALLOW_ORIGINS = [origin.strip() for origin in CORS_ALLOW_ORIGINS_STR.split(",") if origin.strip()]
 else:
-    # Em desenvolvimento, permitir localhost/127.0.0.1
+    # Em development e test, permitir localhost/127.0.0.1
     if CORS_ALLOW_ORIGINS_STR:
         CORS_ALLOW_ORIGINS = [origin.strip() for origin in CORS_ALLOW_ORIGINS_STR.split(",") if origin.strip()]
     else:
-        CORS_ALLOW_ORIGINS = ["*"]  # Apenas em dev
+        CORS_ALLOW_ORIGINS = ["*"]  # Apenas em dev/test
 
 # ============================================================================
 # PAGINAÇÃO
