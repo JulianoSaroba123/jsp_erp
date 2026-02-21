@@ -9,8 +9,10 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "✅ CI disparou OK"
+      - name: Validate CI trigger
+        run: |
+          echo "CI disparou corretamente ✅"
           echo "Branch: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
           echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
