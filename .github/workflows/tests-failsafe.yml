@@ -56,8 +56,6 @@ jobs:
       DEBUG: "False"
       CORS_ALLOW_ORIGINS: "*"
       PYTHONPATH: ${{ github.workspace }}/backend
-      CORS_ALLOW_ORIGINS: "*"
-      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
       - name: 📊 Workflow Context Debug
