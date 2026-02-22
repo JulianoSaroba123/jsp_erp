@@ -152,6 +152,11 @@ def seed_user_admin(db_session: Session) -> User:
     
     Credentials: admin@test.com / testpass123
     """
+    # Check if user already exists (idempotent fixture)
+    existing = db_session.query(User).filter(User.email == "admin@test.com").first()
+    if existing:
+        return existing
+    
     user = User(
         name="Admin Test",
         email="admin@test.com",
@@ -172,6 +177,11 @@ def seed_user_normal(db_session: Session) -> User:
     
     Credentials: user@test.com / testpass123
     """
+    # Check if user already exists (idempotent fixture)
+    existing = db_session.query(User).filter(User.email == "user@test.com").first()
+    if existing:
+        return existing
+    
     user = User(
         name="User Test",
         email="user@test.com",
@@ -192,6 +202,11 @@ def seed_user_other(db_session: Session) -> User:
     
     Credentials: other@test.com / testpass123
     """
+    # Check if user already exists (idempotent fixture)
+    existing = db_session.query(User).filter(User.email == "other@test.com").first()
+    if existing:
+        return existing
+    
     user = User(
         name="Other User",
         email="other@test.com",
