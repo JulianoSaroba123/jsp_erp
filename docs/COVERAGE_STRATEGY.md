@@ -2,32 +2,199 @@
 
 ## 🎯 Metas Progressivas
 
-| Sprint | Meta Coverage | Foco | Duração |
-|--------|---------------|------|---------|
-| **Sprint 1** | 70% | Foundation (Services + Auth) | 1 semana |
-| **Sprint 2** | 75% | Integration (Repositories + Middleware) | 1 semana |
-| **Sprint 3** | 80% | Edge Cases (Error Handling + Utils) | 1 semana |
+| Sprint | Meta Coverage | Real | Status | Foco | Duração |
+|--------|---------------|------|--------|------|---------|
+| **Sprint 1** | 70% | **82%** ✅ | **CONCLUÍDO** | Foundation (Services + Auth) | 1 sprint |
+| **Sprint 2** | 85% | - | 🚧 Planejado | Integration (Routers + Utils) | 1-2 sprints |
+| **Sprint 3** | 90% | - | ⏸️ Futuro | Edge Cases (Error Handling + Reports) | 1-2 sprints |
+
+### Baseline Histórico
+- **Inicial (ETAPA 5):** 78% (63 testes, 350 missing)
+- **Sprint 1:** 82% (118 testes, 293 missing) ✅ **+4pp** | Tag: `sprint-1-complete`
 
 ---
 
 ## 📊 Baseline Atual
 
-**Como descobrir o coverage atual:**
+**Coverage Real descoberto:** **78%** ✅ (63 testes)
 
-1. Vá em: https://github.com/JulianoSaroba123/jsp_erp/actions
-2. Clique na última execução bem-sucedida do workflow **tests**
-3. Scroll até "Artifacts"
-4. Download **coverage-report-html**
-5. Abra `htmlcov/index.html`
-6. Veja o % total no topo da página
+**Como foi descoberto:**
+```powershell
+cd backend
+pytest --cov=app --cov-report=term-missing --cov-report=html -q
+```
 
-**Estimativa conservadora:** ~60-65% (baseado em 63 testes)
+**Resultado (antes do Sprint 1):**
+```
+TOTAL: 1598 statements, 350 missed = 78% coverage
+```
+
+**Gaps Críticos Identificados:**
+- user_service.py: 31% (34 missing) 🔥 URGENTE
+- user_repo.py: 56% (12 missing) 🔥 ALTA
+- password.py: 43% (4 missing) 🔥 ALTA
+- jwt.py: 50% (7 missing) 🔥 ALTA
 
 ---
 
-## 🎯 Sprint 1: Foundation (Meta: 70%)
+## ✅ Sprint 1: Foundation - **CONCLUÍDO** (Meta: 70% → Atingido: 82%)
+
+**Período:** Dezembro 2024 - Janeiro 2025  
+**Tag:** `sprint-1-complete`  
+**Commit:** `c2e2c3f`
+
+### Resultados Alcançados
+
+**Coverage:**
+- **ANTES:** 78% (350 missing)
+- **DEPOIS:** 82% (293 missing)
+- **GANHO:** +4 pontos percentuais (-57 linhas missing)
+
+**Testes:**
+- **ANTES:** 63 testes
+- **DEPOIS:** 118 testes (+55 novos)  
+- **STATUS:** 100% passing ✅
+
+### Targets 100% Atingidos
+
+#### 🎯 **user_service.py:** 31% → **100%** ✅
+**Arquivo:** `tests/services/test_user_service.py` (24 testes)
+```python
+✅ CRUD completo: get_by_id, get_by_email, list_users, create, update, delete
+✅ Validações: ConflictError (email duplicado), NotFoundError
+✅ Edge cases: Empty DB, pagination além do total, partial updates
+✅ Segurança: Roles (admin/user), is_active flags
+```
+
+#### 🎯 **user_repo.py:** 56% → **100%** ✅
+**Cobertura:** Testes de integração via user_service
+
+#### 🎯 **password.py:** 43% → **100%** ✅
+**Arquivo:** `tests/security/test_password.py` (15 testes)
+```python
+✅ Hash generation: bcrypt format, salt randomness
+✅ Verification: correct/incorrect passwords, case-sensitivity
+✅ Security: Unicode, special chars, empty strings, invalid hashes
+✅ Integration: Multi-user scenarios, None handling
+```
+
+#### 🎯 **jwt.py:** 50% → **100%** ✅
+**Arquivo:** `tests/security/test_jwt.py` (16 testes)
+```python
+✅ Token creation: default/custom expiration
+✅ Token decoding: valid, expired, invalid format, wrong secret
+✅ Security: Payload preservation, no mutation, None handling
+✅ Integration: Full auth flow, token refresh, permissions
+```
+
+### Conquistas
+
+- ✅ Camada de segurança 100% coberta (password + JWT)
+- ✅ User service 100% coberto (core business logic)
+- ✅ User repository 100% coberto (data access)
+- ✅ Fixtures idempotentes (conftest.py)
+- ✅ Meta de 70% **SUPERADA** (atingiu 82%)
+
+### Arquivos Criados
+
+- `backend/tests/services/test_user_service.py` (328 linhas)
+- `backend/tests/security/test_password.py` (147 linhas)
+- `backend/tests/security/test_jwt.py` (191 linhas)
+- **TOTAL:** 666 linhas de testes de alta qualidade
+
+---
+
+## 🎯 Sprint 2: Integration (Meta: 85%)
 
 ### Áreas Prioritárias
+
+Baseado nos gaps restantes no coverage atual (82%):
+
+#### 1️⃣ **Routers Layer** (Alta prioridade)
+**Targets identificados:**
+- `app/routers/financial_routes.py`: 40% → **80%** (aumento +40pp)
+- `app/routers/order_routes.py`: 63% → **85%** (aumento +22pp)
+- `app/routers/user_routes.py`: 54% → **85%** (aumento +31pp)
+
+**Testes a criar:**
+```
+tests/routers/
+├── test_financial_routes_extended.py
+│   ├── test_create_financial_entry_validations
+│   ├── test_update_financial_entry_status
+│   ├── test_delete_financial_entry_permissions
+│   ├── test_list_financial_entries_filters
+│   └── test_financial_summary_calculations
+│
+├── test_order_routes_extended.py
+│   ├── test_patch_order_edge_cases
+│   ├── test_order_status_transitions
+│   ├── test_order_financial_sync
+│   └── test_order_bulk_operations
+│
+└── test_user_routes_extended.py
+    ├── test_user_crud_via_api
+    ├── test_user_permissions_matrix
+    └── test_user_update_validations
+```
+
+**Estimativa:** +8% coverage total
+
+---
+
+#### 2️⃣ **Utility Modules** (Coverage 0%)
+**Targets:**
+- `app/utils/pagination.py`: 0% → **100%** (13 statements)
+- `app/core/errors.py`: 0% → **90%** (8 statements)
+
+**Testes a criar:**
+```
+tests/utils/
+└── test_pagination.py
+    ├── test_paginate_function_defaults
+    ├── test_paginate_custom_page_size
+    ├── test_paginate_edge_cases
+    └── test_paginated_response_schema
+
+tests/core/
+└── test_errors.py
+    ├── test_custom_exceptions_creation
+    ├── test_error_messages_formatting
+    └── test_error_hierarchy
+```
+
+**Estimativa:** +2% coverage total
+
+---
+
+#### 3️⃣ **Service Layer Extensions**
+**Targets:**
+- `app/services/financial_service.py`: 67% → **85%**
+- `app/services/order_service.py`: 79% → **90%**
+
+**Testes a criar:**
+```
+tests/services/
+├── test_financial_service.py
+│   ├── test_calculate_totals
+│   ├── test_financial_validations
+│   └── test_financial_entry_lifecycle
+│
+└── test_order_service_extended.py
+    ├── test_order_complex_scenarios
+    ├── test_order_financial_integration
+    └── test_order_cascade_operations
+```
+
+**Estimativa:** +3% coverage total
+
+---
+
+### Meta Sprint 2
+- **Coverage alvo:** 85% (+3pp vs Sprint 1)
+- **Testes novos estimados:** +40-50 testes
+- **Foco:** APIs públicas (routers) + utilidades core
+- **Duração:** 1-2 sprints (2-4 semanas)
 
 #### 1️⃣ **Services Layer** (Alta prioridade)
 **Arquivos:**
