@@ -1,0 +1,126 @@
+# =============================================================================
+# Render Blueprint - ERP JSP Backend
+# =============================================================================
+# Deploy automático via Git push para branch master
+# Docs: https://render.com/docs/blueprint-spec
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Web Service - FastAPI Backend
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: jsp-erp-backend
+    runtime: python
+    region: oregon  # Escolha: oregon, frankfurt, singapore, ohio
+    plan: starter  # free, starter, standard, pro
+    branch: master
+    
+    # Diretório raiz do backend
+    rootDir: backend
+    
+    # Build: instalar deps + rodar migrations
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      chmod +x ../scripts/render_release.sh
+      ../scripts/render_release.sh
+    
+    # Start: Uvicorn em produção (2 workers)
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    
+    # Health check (Render vai monitorar este endpoint)
+    healthCheckPath: /health
+    
+    # Environment Variables
+    envVars:
+      # Ambiente
+      - key: ENV
+        value: production
+      
+      # Debug (NUNCA true em produção)
+      - key: DEBUG
+        value: false
+      
+      # JWT Secret (Render gera automaticamente)
+      - key: SECRET_KEY
+        generateValue: true
+        sync: false  # Não sobrescreve se já existir
+      
+      # JWT Token expiration (1 hora)
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
+      
+      # CORS - IMPORTANTE: Substituir pelo domínio do frontend
+      - key: CORS_ALLOW_ORIGINS
+        value: https://seu-frontend.onrender.com
+      
+      # Database - Linkado automaticamente ao PostgreSQL abaixo
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jsp-erp-db
+          property: connectionString
+      
+      # Python settings
+      - key: PYTHONUNBUFFERED
+        value: 1
+      
+      # Render runtime info (automático)
+      - key: RENDER
+        value: true
+
+  # ---------------------------------------------------------------------------
+  # Database - PostgreSQL Managed
+  # ---------------------------------------------------------------------------
+
+databases:
+  - name: jsp-erp-db
+    databaseName: jsp_erp_production
+    user: jsp_user
+    region: oregon  # Mesma região do web service
+    plan: starter  # free (90 days), starter ($7/mo), standard, pro
+    
+    # Retenção de backups automáticos (7 dias no starter)
+    # Upgrade para standard+ permite point-in-time recovery
+
+# =============================================================================
+# INSTRUÇÕES DE USO
+# =============================================================================
+# 
+# 1. PRIMEIRO DEPLOY (via Render Dashboard):
+#    - New > Blueprint
+#    - Connect repository: JulianoSaroba123/jsp_erp
+#    - Arquivo: render.yaml
+#    - Aprovar e aguardar deploy
+#
+# 2. CONFIGURAR CORS:
+#    - Editar ENV var CORS_ALLOW_ORIGINS com domínio do frontend
+#    - Exemplo: https://app.exemplo.com,https://admin.exemplo.com
+#
+# 3. VALIDAR DEPLOY:
+#    - Acessar: https://jsp-erp-backend.onrender.com/health
+#    - Deve retornar: {"ok": true, "service": "jsp_erp", "env": "production"}
+#
+# 4. SMOKE TEST:
+#    cd scripts
+#    STAGING_BASE_URL=https://jsp-erp-backend.onrender.com python smoke_test_staging.py
+#
+# 5. PRÓXIMOS DEPLOYS:
+#    - Git push para master → deploy automático
+#    - Migrations rodam automaticamente no build
+#
+# =============================================================================
+# CUSTOS ESTIMADOS (Render Pricing)
+# =============================================================================
+# - Web Service Starter: $7/mês (512MB RAM, sempre ativo)
+# - PostgreSQL Starter: $7/mês (1GB storage, backups 7 dias)
+# - Total: ~$14/mês
+#
+# Alternativa Free Tier:
+# - Web Service Free: $0 (spins down após inatividade, 512MB RAM)
+# - PostgreSQL Free: $0 (90 dias trial, depois $7/mês)
+#
+# IMPORTANTE: 
+# - Free tier tem cold start (~30s na primeira requisição após inatividade)
+# - PostgreSQL free expira em 90 dias (migrar para starter)
+# =============================================================================
