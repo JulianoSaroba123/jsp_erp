@@ -10,9 +10,15 @@ load_dotenv()
 # ============================================================================
 # ENVIRONMENT
 # ============================================================================
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+# Suporta ENV ou ENVIRONMENT (ENV tem prioridade para compatibilidade com staging)
+ENVIRONMENT = os.getenv("ENV", os.getenv("ENVIRONMENT", "local")).lower()
+
+# Normaliza 'local' para 'development'
+if ENVIRONMENT == "local":
+    ENVIRONMENT = "development"
+
 if ENVIRONMENT not in ["development", "production", "test"]:
-    raise ValueError(f"ENVIRONMENT inválido: '{ENVIRONMENT}'. Use 'development', 'test' ou 'production'.")
+    raise ValueError(f"ENVIRONMENT inválido: '{ENVIRONMENT}'. Use 'local', 'development', 'test' ou 'production'.")
 
 # ============================================================================
 # DATABASE

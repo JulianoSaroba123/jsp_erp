@@ -123,7 +123,23 @@ app.include_router(audit_log_routes.router)  # ETAPA 6: Audit Logs
 @app.on_event("startup")
 async def startup_event():
     """Executa ao iniciar aplicação"""
+    from sqlalchemy import text
+    from app.database import SessionLocal
+    
     logging.info(f"🚀 {APP_NAME} v{APP_VERSION} iniciado")
+    logging.info(f"📍 Environment: {ENVIRONMENT}")
+    logging.info(f"🔒 CORS origins: {CORS_ALLOW_ORIGINS}")
+    logging.info(f"🐛 Debug mode: {DEBUG}")
+    
+    # Testar conexão ao banco (sem vazar DATABASE_URL)
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        logging.info("✅ Database connection: OK")
+    except Exception as e:
+        logging.error(f"❌ Database connection: FAILED - {str(e)}")
+        # Não bloqueia startup (health check vai pegar isso)
 
 
 @app.on_event("shutdown")
