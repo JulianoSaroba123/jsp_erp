@@ -354,7 +354,6 @@ class TestUpdateFinancialEntryStatus:
 class TestDeleteFinancialEntry:
     """Testes para DELETE /financial/entries/{entry_id}"""
     
-    @pytest.mark.skip(reason="DELETE não implementado no backend (retorna 405)")
     def test_delete_entry_requires_authentication(self, client: TestClient):
         """Deve retornar 401 sem token"""
         fake_id = uuid4()
@@ -362,7 +361,6 @@ class TestDeleteFinancialEntry:
         
         assert response.status_code == 401
     
-    @pytest.mark.skip(reason="DELETE não implementado no backend (retorna 405)")
     def test_delete_entry_not_found(
         self,
         client: TestClient,
@@ -374,6 +372,98 @@ class TestDeleteFinancialEntry:
         client.headers.update(auth_headers_user)
         response = client.delete(f"/financial/entries/{fake_id}")
         
+        assert response.status_code == 404
+    
+    def test_delete_entry_success_pending(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve deletar lançamento com status=pending"""
+        from app.models.financial_entry import FinancialEntry
+        from datetime import datetime
+        
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='expense',
+            amount=50.0,
+            description='Despesa pendente',
+            status='pending',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        client.headers.update(auth_headers_user)
+        response = client.delete(f"/financial/entries/{entry.id}")
+        
+        # 204 No Content
+        assert response.status_code == 204
+    
+    def test_delete_entry_conflict_paid(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve retornar 409 ao tentar deletar lançamento pago"""
+        from app.models.financial_entry import FinancialEntry
+        from datetime import datetime
+        
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            amount=100.0,
+            description='Receita paga',
+            status='paid',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        client.headers.update(auth_headers_user)
+        response = client.delete(f"/financial/entries/{entry.id}")
+        
+        # 409 Conflict
+        assert response.status_code == 409
+        data = response.json()
+        assert 'paid' in data['detail'].lower()
+    
+    def test_delete_entry_multi_tenant(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        seed_user_other: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Usuário não pode deletar lançamento de outro usuário"""
+        from app.models.financial_entry import FinancialEntry
+        from datetime import datetime
+        
+        # Lançamento de outro usuário
+        entry = FinancialEntry(
+            user_id=seed_user_other.id,
+            kind='expense',
+            amount=30.0,
+            description='Outra despesa',
+            status='pending',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Tentar deletar com user_normal
+        client.headers.update(auth_headers_user)
+        response = client.delete(f"/financial/entries/{entry.id}")
+        
+        # 404 (anti-enumeration)
         assert response.status_code == 404
 
 

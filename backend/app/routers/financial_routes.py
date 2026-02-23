@@ -271,3 +271,69 @@ def update_entry_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail
         )
+
+
+@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_entry(
+    entry_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Soft delete de lançamento financeiro.
+    
+    **Autenticação obrigatória (Bearer token)**
+    
+    Regras multi-tenant:
+    - **admin**: pode deletar qualquer lançamento
+    - **outros roles**: podem deletar apenas seus próprios lançamentos
+    
+    Regras de negócio:
+    - Apenas lançamentos com status 'pending' ou 'canceled' podem ser deletados
+    - Lançamentos 'paid' não podem ser deletados (409 Conflict)
+    
+    Response: 204 No Content (sem body)
+    """
+    try:
+        # Buscar lançamento
+        entry = FinancialService.get_entry_by_id(db=db, entry_id=entry_id)
+        
+        if not entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Lançamento {entry_id} não encontrado"
+            )
+        
+        # Multi-tenant: user só pode deletar seus lançamentos (admin pode deletar tudo)
+        if current_user.role != "admin" and entry.user_id != current_user.id:
+            # Retorna 404 (não 403) para não revelar existência (anti-enumeration)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Lançamento {entry_id} não encontrado"
+            )
+        
+        # Soft delete
+        FinancialService.delete_entry(
+            db=db,
+            entry=entry,
+            deleted_by_user_id=current_user.id
+        )
+        
+        # 204 No Content - sem retorno
+        return None
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        from app.exceptions.errors import sanitize_error_message
+        # ConflictError (status='paid') retorna 409
+        if "paid" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e)
+            )
+        detail = sanitize_error_message(e, "Erro ao deletar lançamento")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )

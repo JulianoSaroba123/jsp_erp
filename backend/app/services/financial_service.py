@@ -310,3 +310,37 @@ class FinancialService:
 
         # Status='canceled': já estava cancelado, ok
         return entry
+
+    @staticmethod
+    def delete_entry(db: Session, entry: FinancialEntry, deleted_by_user_id: UUID) -> FinancialEntry:
+        """
+        Soft delete de lançamento financeiro.
+        
+        Regras:
+        - Apenas lançamentos com status='pending' ou 'canceled' podem ser deletados
+        - Lançamentos 'paid' não podem ser deletados (requer estorno formal)
+        
+        Args:
+            db: Sessão SQLAlchemy
+            entry: FinancialEntry a ser deletado
+            deleted_by_user_id: ID do usuário que está deletando
+            
+        Returns:
+            FinancialEntry marcado como deleted
+            
+        Raises:
+            ConflictError: Se status='paid'
+        """
+        # Validação: não permitir delete de lançamento pago
+        if entry.status == 'paid':
+            raise ConflictError(
+                "Não é possível deletar lançamento financeiro com status='paid'. "
+                "Solicite estorno formal ao financeiro."
+            )
+        
+        # Soft delete
+        return FinancialRepository.soft_delete(
+            db=db,
+            entry=entry,
+            deleted_by_user_id=deleted_by_user_id
+        )

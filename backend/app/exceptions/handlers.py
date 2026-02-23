@@ -5,6 +5,7 @@ Intercepta exceções customizadas e retorna JSON padronizado.
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import IntegrityError
 
 from app.exceptions.errors import AppException
@@ -39,12 +40,12 @@ def register_exception_handlers(app):
         
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
+            content=jsonable_encoder({
                 "error": "ValidationError",
                 "message": "Dados inválidos na requisição",
                 "details": exc.errors(),
                 "request_id": request_id
-            }
+            })
         )
     
     @app.exception_handler(IntegrityError)

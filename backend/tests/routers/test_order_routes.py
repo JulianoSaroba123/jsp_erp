@@ -201,7 +201,6 @@ class TestCreateOrder:
         
         assert response.status_code == 422
     
-    @pytest.mark.skip(reason="Backend bug: Decimal não-serializável em ValidationError - requer fix no handler") 
     def test_create_order_negative_total(
         self,
         client: TestClient,
@@ -216,8 +215,11 @@ class TestCreateOrder:
         client.headers.update(auth_headers_user)
         response = client.post("/orders", json=payload)
         
-        # Pode ser 400 ou 422 dependendo da validação
-        assert response.status_code in [400, 422]
+        # Deve retornar 422 por validação do Pydantic
+        assert response.status_code == 422
+        data = response.json()
+        assert "error" in data
+        assert data["error"] == "ValidationError"
 
 
 class TestGetOrderById:
@@ -406,3 +408,91 @@ class TestOrderRoutesEdgeCases:
         
         # Pode ser aceito (dependendo da validação) ou rejeitado
         assert response.status_code in [201, 400, 422]
+
+
+class TestRestoreOrder:
+    """Testes para POST /orders/{order_id}/restore"""
+    
+    def test_restore_order_requires_authentication(self, client: TestClient):
+        """Deve retornar 401 sem token"""
+        fake_id = uuid4()
+        response = client.post(f"/orders/{fake_id}/restore")
+        
+        assert response.status_code == 401
+    
+    def test_restore_order_success(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_admin: dict,
+        db_session: Session
+    ):
+        """Deve restaurar pedido deletado com sucesso"""
+        # Criar e deletar pedido
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Deletado",
+            total=50.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        # Deletar (admin pode deletar qualquer pedido)
+        client.headers.update(auth_headers_admin)
+        client.delete(f"/orders/{order.id}")
+        
+        # Restaurar (admin pode restaurar)
+        response = client.post(f"/orders/{order.id}/restore")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(order.id)
+        assert data["description"] == "Deletado"
+    
+    def test_restore_order_not_found(
+        self,
+        client: TestClient,
+        auth_headers_admin: dict
+    ):
+        """Deve retornar 404 para pedido inexistente"""
+        fake_id = uuid4()
+        
+        client.headers.update(auth_headers_admin)
+        response = client.post(f"/orders/{fake_id}/restore")
+        
+        assert response.status_code == 404
+
+
+class TestUpdateOrderEdgeCases:
+    """Testes adicionais de PATCH /orders/{order_id}"""
+    
+    def test_update_order_with_invalid_fields(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve ignorar campos inválidos no PATCH"""
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Original",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        payload = {
+            "description": "Updated",
+            "invalid_field": "should be ignored"
+        }
+        
+        client.headers.update(auth_headers_user)
+        response = client.patch(f"/orders/{order.id}", json=payload)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] == "Updated"
+        assert "invalid_field" not in data
