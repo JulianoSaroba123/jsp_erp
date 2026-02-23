@@ -1,0 +1,100 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\julia\Desktop\ERP_JSP Training\jsp-erp\backend
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.12.1, Faker-40.4.0, cov-7.0.0
+collected 210 items
+
+tests\core\test_errors.py ..........                                     [  4%]
+tests\routers\test_financial_routes.py .............FF..                 [ 12%]
+tests\routers\test_order_routes.py ..FFF.F..F.F.FF......                 [ 22%]
+tests\routers\test_user_routes.py ......F..F.................            [ 35%]
+tests\security\test_jwt.py ................                              [ 43%]
+tests\security\test_password.py ...............                          [ 50%]
+tests\services\test_user_service.py ........................             [ 61%]
+tests\test_audit_logs.py ............                                    [ 67%]
+tests\test_auth_login.py ........                                        [ 71%]
+tests\test_bugfix_status_codes.py ....                                   [ 73%]
+tests\test_financial_idempotency.py ......                               [ 76%]
+tests\test_health.py ..                                                  [ 77%]
+tests\test_orders_get_post_delete.py ........                            [ 80%]
+tests\test_patch_orders.py .......                                       [ 84%]
+tests\test_reports_smoke.py .......                                      [ 87%]
+tests\test_soft_delete.py .........                                      [ 91%]
+tests\utils\test_pagination.py .................                         [100%]
+
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.2-final-0 _______________
+
+Name                                       Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------
+app\__init__.py                                0      0   100%
+app\auth\__init__.py                           6      0   100%
+app\auth\repository.py                        27      5    81%   87-88, 102-104
+app\auth\router.py                            82     13    84%   95, 104-105, 115, 122, 174-178, 253-260
+app\auth\security.py                          23      0   100%
+app\auth\service.py                           39     10    74%   55, 59, 64, 110, 137-146
+app\config.py                                 28      7    75%   15, 22, 30, 50-55, 61
+app\core\__init__.py                           0      0   100%
+app\core\errors.py                             8      0   100%
+app\database.py                               15      3    80%   18, 30-31
+app\exceptions\__init__.py                     0      0   100%
+app\exceptions\errors.py                      28      5    82%   31-38, 70
+app\exceptions\handlers.py                    27      6    78%   53-57, 69-73
+app\main.py                                   46      3    93%   57-58, 81
+app\middleware\__init__.py                     0      0   100%
+app\middleware\logging.py                     14      0   100%
+app\middleware\request_id.py                  10      0   100%
+app\models\__init__.py                         5      0   100%
+app\models\audit_log.py                       24      2    92%   124, 140
+app\models\financial_entry.py                 23      1    96%   133
+app\models\order.py                           18      1    94%   53
+app\models\user.py                            18      1    94%   47
+app\repositories\__init__.py                   0      0   100%
+app\repositories\financial_repository.py      83      4    95%   108, 161, 231-232
+app\repositories\order_repository.py          73      7    90%   143-144, 164-170
+app\repositories\report_repository.py         86     10    88%   142, 367-378
+app\repositories\user_repo.py                 27      0   100%
+app\routers\__init__.py                        0      0   100%
+app\routers\audit_log_routes.py               23      2    91%   158-165
+app\routers\financial_routes.py               68     35    49%   90-100, 134-141, 145-148, 191-200, 232-270
+app\routers\health_routes.py                  17      3    82%   19, 35-36
+app\routers\order_routes.py                  103     37    64%   73-76, 116-125, 163, 167-171, 211-214, 238-244, 297-300, 334, 341, 350-355
+app\routers\report_routes.py                  58     22    62%   79-83, 136-144, 198-206, 267-275
+app\routers\user_routes.py                    35      0   100%
+app\schemas\__init__.py                        3      0   100%
+app\schemas\audit_log_schema.py               39      0   100%
+app\schemas\financial_schema.py               31      0   100%
+app\schemas\order_schema.py                   24      0   100%
+app\schemas\report_schema.py                  58      0   100%
+app\schemas\user_schema.py                    25      0   100%
+app\security\__init__.py                       0      0   100%
+app\security\deps.py                          36      9    75%   22-26, 50, 54-55, 62, 65
+app\security\jwt.py                           14      0   100%
+app\security\password.py                       7      0   100%
+app\services\__init__.py                       0      0   100%
+app\services\audit_log_service.py             47      6    87%   133, 136, 139, 142, 206, 209
+app\services\financial_service.py             78     25    68%   54, 56, 58, 62, 66, 133, 139, 144, 198, 213-224, 252-269, 298, 312
+app\services\order_service.py                 97     20    79%   43, 47, 49, 83, 87, 89, 94, 213-236, 283
+app\services\report_service.py                63      5    92%   37, 287, 293, 299, 301
+app\services\user_service.py                  49      0   100%
+app\utils\__init__.py                          0      0   100%
+app\utils\pagination.py                       13      0   100%
+------------------------------------------------------------------------
+TOTAL                                       1598    242    85%
+Coverage HTML written to dir htmlcov
+=========================== short test summary info ===========================
+FAILED tests/routers/test_financial_routes.py::TestDeleteFinancialEntry::test_delete_entry_requires_authentication
+FAILED tests/routers/test_financial_routes.py::TestDeleteFinancialEntry::test_delete_entry_not_found
+FAILED tests/routers/test_order_routes.py::TestListOrders::test_list_orders_multi_tenant_user_sees_own_only
+FAILED tests/routers/test_order_routes.py::TestListOrders::test_list_orders_admin_sees_all
+FAILED tests/routers/test_order_routes.py::TestListOrders::test_list_orders_pagination
+FAILED tests/routers/test_order_routes.py::TestCreateOrder::test_create_order_success
+FAILED tests/routers/test_order_routes.py::TestCreateOrder::test_create_order_negative_total
+FAILED tests/routers/test_order_routes.py::TestGetOrderById::test_get_order_success
+FAILED tests/routers/test_order_routes.py::TestGetOrderById::test_get_order_multi_tenant_user_cannot_see_others
+FAILED tests/routers/test_order_routes.py::TestGetOrderById::test_get_order_admin_can_see_any
+FAILED tests/routers/test_user_routes.py::TestGetUser::test_get_user_not_found
+FAILED tests/routers/test_user_routes.py::TestCreateUser::test_create_user_duplicate_email
+================= 12 failed, 198 passed in 138.91s (0:02:18) ==================

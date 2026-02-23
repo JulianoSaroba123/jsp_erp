@@ -135,7 +135,9 @@ class TestGetUser:
         
         assert response.status_code == 404
         data = response.json()
-        assert "detail" in data
+        assert "message" in data
+        assert "error" in data
+        assert data["error"] == "NotFoundError"
     
     def test_get_user_invalid_uuid(self, client: TestClient):
         """Deve retornar 422 para UUID inválido"""
@@ -188,7 +190,8 @@ class TestCreateUser:
         
         assert response.status_code == 409
         data = response.json()
-        assert "detail" in data
+        assert "message" in data
+        assert "error" in data
     
     def test_create_user_missing_required_fields(self, client: TestClient):
         """Deve retornar 422 se faltar campos obrigatórios"""

@@ -1,0 +1,87 @@
+﻿.\.venv\Scripts\pytest.exe : 2026-02-23 06:40:07,131 | INFO | app.main | Iniciando em modo: test
+No linha:1 caractere:1
++ .\.venv\Scripts\pytest.exe tests/routers/test_user_routes.py::TestGet ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-02-23 06:4...o em modo: test:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-02-23 06:40:07,133 | INFO | app.main | CORS allow_origins: ['*']
+============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\julia\Desktop\ERP_JSP Training\jsp-erp\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\julia\Desktop\ERP_JSP Training\jsp-erp\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, Faker-40.4.0, cov-7.0.0
+collecting ... collected 1 item
+
+2026-02-23 06:40:07,469 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.address`.
+2026-02-23 06:40:07,486 | DEBUG | faker.factory | Provider `faker.providers.address` has been localized to `en_US`.
+2026-02-23 06:40:07,498 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.automotive`.
+2026-02-23 06:40:07,509 | DEBUG | faker.factory | Provider `faker.providers.automotive` has been localized to `en_US`.
+2026-02-23 06:40:07,514 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.bank`.
+2026-02-23 06:40:07,522 | DEBUG | faker.factory | Specified locale `en_US` is not available for provider `faker.providers.bank`. Locale reset to `en_GB` for this provider.
+2026-02-23 06:40:07,527 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.barcode`.
+2026-02-23 06:40:07,529 | DEBUG | faker.factory | Provider `faker.providers.barcode` has been localized to `en_US`.
+2026-02-23 06:40:07,543 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.color`.
+2026-02-23 06:40:07,550 | DEBUG | faker.factory | Provider `faker.providers.color` has been localized to `en_US`.
+2026-02-23 06:40:07,554 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.company`.
+2026-02-23 06:40:07,564 | DEBUG | faker.factory | Provider `faker.providers.company` has been localized to `en_US`.
+2026-02-23 06:40:07,570 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.credit_card`.
+2026-02-23 06:40:07,572 | DEBUG | faker.factory | Provider `faker.providers.credit_card` has been localized to `en_US`.
+2026-02-23 06:40:07,577 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.currency`.
+2026-02-23 06:40:07,585 | DEBUG | faker.factory | Provider `faker.providers.currency` has been localized to `en_US`.
+2026-02-23 06:40:07,590 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.date_time`.
+2026-02-23 06:40:07,601 | DEBUG | faker.factory | Provider `faker.providers.date_time` has been localized to `en_US`.
+2026-02-23 06:40:07,610 | DEBUG | faker.factory | Provider `faker.providers.doi` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,610 | DEBUG | faker.factory | Provider `faker.providers.emoji` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,610 | DEBUG | faker.factory | Provider `faker.providers.file` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,610 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.geo`.
+2026-02-23 06:40:07,613 | DEBUG | faker.factory | Provider `faker.providers.geo` has been localized to `en_US`.
+2026-02-23 06:40:07,617 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.internet`.
+2026-02-23 06:40:07,627 | DEBUG | faker.factory | Provider `faker.providers.internet` has been localized to `en_US`.
+2026-02-23 06:40:07,632 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.isbn`.
+2026-02-23 06:40:07,633 | DEBUG | faker.factory | Provider `faker.providers.isbn` has been localized to `en_US`.
+2026-02-23 06:40:07,638 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.job`.
+2026-02-23 06:40:07,647 | DEBUG | faker.factory | Provider `faker.providers.job` has been localized to `en_US`.
+2026-02-23 06:40:07,652 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.lorem`.
+2026-02-23 06:40:07,660 | DEBUG | faker.factory | Provider `faker.providers.lorem` has been localized to `en_US`.
+2026-02-23 06:40:07,660 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.misc`.
+2026-02-23 06:40:07,662 | DEBUG | faker.factory | Provider `faker.providers.misc` has been localized to `en_US`.
+2026-02-23 06:40:07,667 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.passport`.
+2026-02-23 06:40:07,668 | DEBUG | faker.factory | Provider `faker.providers.passport` has been localized to `en_US`.
+2026-02-23 06:40:07,674 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.person`.
+2026-02-23 06:40:07,694 | DEBUG | faker.factory | Provider `faker.providers.person` has been localized to `en_US`.
+2026-02-23 06:40:07,704 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.phone_number`.
+2026-02-23 06:40:07,719 | DEBUG | faker.factory | Provider `faker.providers.phone_number` has been localized to `en_US`.
+2026-02-23 06:40:07,724 | DEBUG | faker.factory | Provider `faker.providers.profile` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,724 | DEBUG | faker.factory | Provider `faker.providers.python` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,725 | DEBUG | faker.factory | Provider `faker.providers.sbn` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,725 | DEBUG | faker.factory | Looking for locale `en_US` in provider `faker.providers.ssn`.
+2026-02-23 06:40:07,736 | DEBUG | faker.factory | Provider `faker.providers.ssn` has been localized to `en_US`.
+2026-02-23 06:40:07,742 | DEBUG | faker.factory | Provider `faker.providers.user_agent` does not feature localization. Specified locale `en_US` is not used for this provider.
+2026-02-23 06:40:07,963 | DEBUG | asyncio | Using proactor: IocpProactor
+2026-02-23 06:40:07,976 | INFO | root | \U0001f680 ERP JSP v1.0.0 iniciado
+2026-02-23 06:40:08,111 | ERROR | app.exceptions.handlers | [0b784756-1ab5-4096-80d3-64c26495e548] NotFoundError: Usußrio com ID cd9c302b-0d30-479f-be2b-47080b9e6936 nÒo encontrado
+2026-02-23 06:40:08,114 | INFO | app.middleware.logging | [unknown] GET /users/cd9c302b-0d30-479f-be2b-47080b9e6936 | status=404 | time=0.132s
+2026-02-23 06:40:08,117 | INFO | httpx | HTTP Request: GET http://testserver/users/cd9c302b-0d30-479f-be2b-47080b9e6936 "HTTP/1.1 404 Not Found"
+2026-02-23 06:40:08,405 | INFO | root | \U0001f6d1 ERP JSP desligado
+tests/routers/test_user_routes.py::TestGetUser::test_get_user_not_found FAILED
+
+================================== FAILURES ===================================
+_____________________ TestGetUser.test_get_user_not_found _____________________
+tests\routers\test_user_routes.py:138: in test_get_user_not_found
+    assert "detail" in data
+E   AssertionError: assert 'detail' in {'error': 'NotFoundError', 'message': 'Usu\xe1rio com ID cd9c302b-0d30-479f-be2b-47080b9e6936 n\xe3o encontrado', 'request_id': '0b784756-1ab5-4096-80d3-64c26495e548'}
+----------------------------- Captured log setup ------------------------------
+DEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.address`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.address` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.automotive`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.automotive` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.bank`.\nDEBUG    faker.factory:factory.py:88 Specified locale `en_US` is not available for provider `faker.providers.bank`. Locale reset to `en_GB` for this provider.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.barcode`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.barcode` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.color`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.color` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.company`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.company` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.credit_card`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.credit_card` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.currency`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.currency` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.date_time`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.date_time` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.doi` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.emoji` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.file` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.geo`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.geo` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.internet`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.internet` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.isbn`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.isbn` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.job`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.job` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.lorem`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.lorem` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.misc`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.misc` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.passport`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.passport` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.person`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.person` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.phone_number`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.phone_number` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.profile` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.python` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.sbn` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    faker.factory:factory.py:78 Looking for locale `en_US` in provider `faker.providers.ssn`.\nDEBUG    faker.factory:factory.py:97 Provider `faker.providers.ssn` has been localized to `en_US`.\nDEBUG    faker.factory:factory.py:108 Provider `faker.providers.user_agent` does not feature localization. Specified locale `en_US` is not used for this provider.\nDEBUG    asyncio:proactor_events.py:631 Using proactor: IocpProactor\nINFO     root:main.py:126 \U0001f680 ERP JSP v1.0.0 iniciado
+------------------------------ Captured log call ------------------------------
+ERROR    app.exceptions.handlers:handlers.py:24 [0b784756-1ab5-4096-80d3-64c26495e548] NotFoundError: Usußrio com ID cd9c302b-0d30-479f-be2b-47080b9e6936 nÒo encontrado
+INFO     app.middleware.logging:logging.py:37 [unknown] GET /users/cd9c302b-0d30-479f-be2b-47080b9e6936 | status=404 | time=0.132s
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/users/cd9c302b-0d30-479f-be2b-47080b9e6936 "HTTP/1.1 404 Not Found"
+---------------------------- Captured log teardown ----------------------------
+INFO     root:main.py:132 \U0001f6d1 ERP JSP desligado
+=========================== short test summary info ===========================
+FAILED tests/routers/test_user_routes.py::TestGetUser::test_get_user_not_found - AssertionError: assert 'detail' in {'error': 'NotFoundError', 'message': 'Usu\xe1rio com ID cd9c302b-0d30-479f-be2b-47080b9e6936 n\xe3o encontrado', 'request_id': '0b784756-1ab5-4096-80d3-64c26495e548'}
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+============================== 1 failed in 1.19s ==============================
+
