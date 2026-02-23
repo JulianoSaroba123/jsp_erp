@@ -71,7 +71,7 @@ jobs:
       - name: Run tests with coverage
         working-directory: backend
         run: |
-          pytest --maxfail=1 --disable-warnings --cov=app --cov-report=term-missing --cov-report=html
+          pytest --maxfail=1 --disable-warnings --cov=app --cov-report=term-missing --cov-report=html --cov-fail-under=80
 
       - name: Upload coverage HTML report
         if: always()
