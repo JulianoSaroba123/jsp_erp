@@ -14,7 +14,7 @@ services:
     runtime: python
     region: oregon  # Escolha: oregon, frankfurt, singapore, ohio
     plan: starter  # free, starter, standard, pro
-    branch: master
+    branch: main
     
     # Diretório raiz do backend
     rootDir: backend
