@@ -13,7 +13,7 @@ services:
     name: jsp-erp-backend
     runtime: python
     region: oregon  # Escolha: oregon, frankfurt, singapore, ohio
-    plan: starter  # free, starter, standard, pro
+    plan: free  # Grátis com cold start (upgrade para starter $7/mo para always-on)
     branch: main
     
     # Diretório raiz do backend
@@ -77,7 +77,7 @@ databases:
     databaseName: jsp_erp_production
     user: jsp_user
     region: oregon  # Mesma região do web service
-    plan: starter  # free (90 days), starter ($7/mo), standard, pro
+    plan: free  # Grátis com limitações (upgrade para paid plans quando necessário)
     
     # Retenção de backups automáticos (7 dias no starter)
     # Upgrade para standard+ permite point-in-time recovery
