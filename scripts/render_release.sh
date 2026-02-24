@@ -24,6 +24,19 @@ echo "✅ DATABASE_URL found (${DATABASE_URL:0:20}...)"
 cd "$(dirname "$0")/../backend"
 echo "📁 Working directory: $(pwd)"
 
+# Create schema if it doesn't exist (required for Alembic)
+echo ""
+echo "🗂️  Creating schema 'core' if not exists..."
+python -c "
+from sqlalchemy import create_engine, text
+import os
+engine = create_engine(os.environ['DATABASE_URL'])
+with engine.connect() as conn:
+    conn.execute(text('CREATE SCHEMA IF NOT EXISTS core'))
+    conn.commit()
+print('✅ Schema core verified')
+"
+
 # Check if alembic is installed
 if ! command -v alembic &> /dev/null; then
     echo "❌ ERROR: Alembic not found!"
