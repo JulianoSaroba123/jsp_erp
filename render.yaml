@@ -45,7 +45,6 @@ services:
       # JWT Secret (Render gera automaticamente)
       - key: SECRET_KEY
         generateValue: true
-        sync: false  # Não sobrescreve se já existir
       
       # JWT Token expiration (1 hora)
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
