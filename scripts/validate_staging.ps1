@@ -18,16 +18,16 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Cores
-function Write-Success { param($msg) Write-Host "✅ $msg" -ForegroundColor Green }
-function Write-Error-Custom { param($msg) Write-Host "❌ $msg" -ForegroundColor Red }
-function Write-Info { param($msg) Write-Host "ℹ️  $msg" -ForegroundColor Cyan }
-function Write-Warning-Custom { param($msg) Write-Host "⚠️  $msg" -ForegroundColor Yellow }
+function Write-Success { param($msg) Write-Host "[OK] $msg" -ForegroundColor Green }
+function Write-Error-Custom { param($msg) Write-Host "[ERROR] $msg" -ForegroundColor Red }
+function Write-Info { param($msg) Write-Host "[INFO] $msg" -ForegroundColor Cyan }
+function Write-Warning-Custom { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 
 # Banner
 Write-Host ""
-Write-Host "═════════════════════════════════════════" -ForegroundColor Magenta
-Write-Host "  🧪 VALIDAÇÃO DE STAGING - ERP JSP" -ForegroundColor Magenta
-Write-Host "═════════════════════════════════════════" -ForegroundColor Magenta
+Write-Host "=========================================" -ForegroundColor Magenta
+Write-Host "  VALIDACAO DE STAGING - ERP JSP" -ForegroundColor Magenta
+Write-Host "=========================================" -ForegroundColor Magenta
 Write-Info "Target: $BaseUrl"
 Write-Info "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 Write-Host ""
@@ -100,7 +100,7 @@ try {
             Write-Success "Swagger UI accessible"
             $results.docs = $true
         } else {
-            Write-Warning-Custom "Response doesn't contain Swagger UI"
+            Write-Warning-Custom "Response does not contain Swagger UI"
         }
     } else {
         Write-Error-Custom "HTTP $($response.StatusCode)"
@@ -129,7 +129,7 @@ try {
             Write-Success "ReDoc accessible"
             $results.redoc = $true
         } else {
-            Write-Warning-Custom "Response doesn't contain ReDoc"
+            Write-Warning-Custom "Response does not contain ReDoc"
         }
     } else {
         Write-Error-Custom "HTTP $($response.StatusCode)"
@@ -165,7 +165,7 @@ if (Test-Path $smokeTestPath) {
         }
         
         if ($smokeTestExitCode -eq 0) {
-            Write-Success "Smoke test passed (5/5)"
+            Write-Success "Smoke test passed (5/5 tests)"
             $results.smoke_test = $true
         } else {
             Write-Error-Custom "Smoke test failed (exit code: $smokeTestExitCode)"
@@ -196,7 +196,7 @@ $total = $results.Count
 
 Write-Host ""
 foreach ($test in $results.GetEnumerator()) {
-    $status = if ($test.Value) { "✅ PASS" } else { "❌ FAIL" }
+    $status = if ($test.Value) { "[PASS]" } else { "[FAIL]" }
     $color = if ($test.Value) { "Green" } else { "Red" }
     Write-Host ("{0,-20} {1}" -f $test.Key, $status) -ForegroundColor $color
 }
@@ -205,15 +205,15 @@ Write-Host ""
 Write-Host "─────────────────────────────────────────"
 
 if ($passed -eq $total) {
-    Write-Host "✅ ALL TESTS PASSED ($passed/$total)" -ForegroundColor Green
+    Write-Host "[SUCCESS] ALL TESTS PASSED ($passed/$total)" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🎉 STAGING IS READY!" -ForegroundColor Green -BackgroundColor DarkGreen
+    Write-Host "*** STAGING IS READY! ***" -ForegroundColor Green -BackgroundColor DarkGreen
     Write-Host ""
     exit 0
 } else {
-    Write-Host "❌ SOME TESTS FAILED ($passed/$total)" -ForegroundColor Red
+    Write-Host "[FAIL] SOME TESTS FAILED ($passed/$total)" -ForegroundColor Red
     Write-Host ""
-    Write-Host "🚨 Staging NOT ready - check logs" -ForegroundColor Red -BackgroundColor DarkRed
+    Write-Host "*** Staging NOT ready - check logs ***" -ForegroundColor Red -BackgroundColor DarkRed
     Write-Host ""
     Write-Warning-Custom "Troubleshooting guide: RUNBOOK_DEPLOY_RENDER.md"
     exit 1
