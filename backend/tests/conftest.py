@@ -96,6 +96,8 @@ def db_session(setup_test_database) -> Generator[Session, None, None]:
         session.rollback()
         
         # Cleanup data in reverse order (FK constraints)
+        # Note: RBAC tables (roles, permissions, user_roles, role_permissions) não são limpas aqui
+        # para evitar conflitos em testes paralelos. Rode seed_rbac novamente se necessário.
         session.execute(text("TRUNCATE TABLE core.audit_logs CASCADE"))
         session.execute(text("TRUNCATE TABLE core.financial_entries CASCADE"))
         session.execute(text("TRUNCATE TABLE core.orders CASCADE"))
