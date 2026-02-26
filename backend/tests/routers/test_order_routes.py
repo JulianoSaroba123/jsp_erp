@@ -335,12 +335,12 @@ class TestDeleteOrder:
     def test_delete_order_not_found(
         self,
         client: TestClient,
-        auth_headers_user: dict
+        auth_headers_with_delete: dict
     ):
         """Deve retornar 404 para ordem inexistente"""
         fake_id = uuid4()
         
-        client.headers.update(auth_headers_user)
+        client.headers.update(auth_headers_with_delete)
         response = client.delete(f"/orders/{fake_id}")
         
         assert response.status_code == 404
@@ -424,6 +424,7 @@ class TestRestoreOrder:
         self,
         client: TestClient,
         seed_user_normal: User,
+        seed_admin_with_delete_permission: User,
         auth_headers_admin: dict,
         db_session: Session
     ):
@@ -438,7 +439,7 @@ class TestRestoreOrder:
         db_session.commit()
         db_session.refresh(order)
         
-        # Deletar (admin pode deletar qualquer pedido)
+        # Deletar (admin com permissão pode deletar qualquer pedido)
         client.headers.update(auth_headers_admin)
         client.delete(f"/orders/{order.id}")
         

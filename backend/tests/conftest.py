@@ -27,6 +27,8 @@ from app.config import SECRET_KEY, ALGORITHM
 from app.models.user import User
 from app.models.order import Order
 from app.models.financial_entry import FinancialEntry
+from app.models.role import Role
+from app.models.permission import Permission
 from app.auth.security import hash_password, create_access_token
 
 
@@ -250,6 +252,97 @@ def auth_headers_other(seed_user_other: User) -> dict:
     Generate Bearer token headers for other user (anti-enumeration tests).
     """
     token = create_access_token(subject=str(seed_user_other.id))
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def seed_user_with_delete_permission(db_session: Session) -> User:
+    """
+    Create user with orders:delete permission for testing RBAC.
+    
+    Credentials: deleter@test.com / testpass123
+    """
+    # Check if user already exists
+    existing = db_session.query(User).filter(User.email == "deleter@test.com").first()
+    if existing:
+        return existing
+    
+    # Create user
+    user = User(
+        name="Deleter User",
+        email="deleter@test.com",
+        password_hash=hash_password("testpass123"),
+        role="user",
+        is_active=True
+    )
+    db_session.add(user)
+    db_session.flush()
+    
+    # Create permission if not exists
+    delete_permission = db_session.query(Permission).filter_by(
+        resource="orders", action="delete"
+    ).first()
+    if not delete_permission:
+        delete_permission = Permission(resource="orders", action="delete")
+        db_session.add(delete_permission)
+        db_session.flush()
+    
+    # Create role if not exists
+    deleter_role = db_session.query(Role).filter_by(name="order_deleter").first()
+    if not deleter_role:
+        deleter_role = Role(name="order_deleter", description="Can delete orders")
+        deleter_role.permissions.append(delete_permission)
+        db_session.add(deleter_role)
+        db_session.flush()
+    
+    # Assign role to user
+    if deleter_role not in user.roles:
+        user.roles.append(deleter_role)
+    
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def seed_admin_with_delete_permission(db_session: Session, seed_user_admin: User) -> User:
+    """
+    Add orders:delete permission to admin user.
+    
+    Used in tests that require admin to delete orders.
+    """
+    # Create permission if not exists
+    delete_permission = db_session.query(Permission).filter_by(
+        resource="orders", action="delete"
+    ).first()
+    if not delete_permission:
+        delete_permission = Permission(resource="orders", action="delete")
+        db_session.add(delete_permission)
+        db_session.flush()
+    
+    # Create role if not exists
+    admin_deleter_role = db_session.query(Role).filter_by(name="admin_order_deleter").first()
+    if not admin_deleter_role:
+        admin_deleter_role = Role(name="admin_order_deleter", description="Admin can delete orders")
+        admin_deleter_role.permissions.append(delete_permission)
+        db_session.add(admin_deleter_role)
+        db_session.flush()
+    
+    # Assign role to admin if not already assigned
+    if admin_deleter_role not in seed_user_admin.roles:
+        seed_user_admin.roles.append(admin_deleter_role)
+        db_session.commit()
+    
+    db_session.refresh(seed_user_admin)
+    return seed_user_admin
+
+
+@pytest.fixture
+def auth_headers_with_delete(seed_user_with_delete_permission: User) -> dict:
+    """
+    Generate Bearer token headers for user with delete permission.
+    """
+    token = create_access_token(subject=str(seed_user_with_delete_permission.id))
     return {"Authorization": f"Bearer {token}"}
 
 
