@@ -7,6 +7,7 @@ from uuid import UUID
 from typing import Optional, List
 
 from app.models.user import User
+from app.models.role import Role
 
 
 class UserRepository:
@@ -20,7 +21,7 @@ class UserRepository:
         return (
             self.db.query(User)
             .options(
-                joinedload(User.roles).joinedload('permissions')
+                joinedload(User.roles).joinedload(Role.permissions)
             )
             .filter(User.id == user_id)
             .first()
