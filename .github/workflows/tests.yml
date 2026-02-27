@@ -71,7 +71,7 @@ jobs:
       - name: Run tests with coverage
         working-directory: backend
         run: |
-          pytest --maxfail=1 --disable-warnings \
+          pytest --disable-warnings \
             --cov=app \
             --cov-branch \
             --cov-report=term-missing \
