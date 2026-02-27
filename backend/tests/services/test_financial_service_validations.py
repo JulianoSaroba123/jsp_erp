@@ -238,3 +238,77 @@ class TestFinancialServiceUpdateValidations:
         
         error_message = str(exc_info.value)
         assert "status inválido" in error_message
+    
+    def test_update_status_same_status_returns_entry(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:261-262 - Retorna entry se status já é o desejado
+        
+        Regra: Se current_status == new_status, apenas retorna (idempotência)
+        """
+        # Criar entry com status 'pending'
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            status='pending',
+            amount=Decimal('100.00'),
+            description='Test Entry',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Act - Tentar mudar para mesmo status
+        result = FinancialService.update_status(
+            db=db_session,
+            entry=entry,
+            new_status="pending"  # Mesmo status atual
+        )
+        
+        # Assert - Deve retornar entry sem erro
+        assert result.id == entry.id
+        assert result.status == "pending"
+    
+    def test_update_status_invalid_transition_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:268-271 - Bloqueia transições inválidas
+        
+        Regra: Apenas 'pending' pode mudar para 'paid' ou 'canceled'
+        Outras transições são bloqueadas (paid -> pending, canceled -> paid, etc)
+        """
+        # Criar entry com status 'paid'
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            status='paid',
+            amount=Decimal('100.00'),
+            description='Test Entry',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Act & Assert - paid -> pending (inválido)
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="pending"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "Transição inválida" in error_message
+        assert "paid" in error_message
+        assert "pending" in error_message
+        
+        # Act & Assert - paid -> canceled (inválido)
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="canceled"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "Transição inválida" in error_message
