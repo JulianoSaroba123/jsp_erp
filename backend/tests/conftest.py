@@ -346,6 +346,15 @@ def auth_headers_with_delete(seed_user_with_delete_permission: User) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture
+def auth_headers_admin_with_delete(seed_admin_with_delete_permission: User) -> dict:
+    """
+    Generate Bearer token headers for admin with delete permission.
+    """
+    token = create_access_token(subject=str(seed_admin_with_delete_permission.id))
+    return {"Authorization": f"Bearer {token}"}
+
+
 # ============================================================================
 # DATA FIXTURES
 # ============================================================================

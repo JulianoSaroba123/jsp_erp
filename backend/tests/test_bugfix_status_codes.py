@@ -36,7 +36,7 @@ def test_delete_order_permission_error_returns_403_not_409(client, auth_headers_
     assert "permissão" in response.json()["detail"].lower()
 
 
-def test_delete_order_business_rule_error_returns_409(client, auth_headers_user, seed_admin_with_delete_permission, auth_headers_admin, db_session):
+def test_delete_order_business_rule_error_returns_409(client, auth_headers_user, auth_headers_admin_with_delete, db_session):
     """
     Valida que erro de BUSINESS RULE retorna 409 Conflict.
     
@@ -46,7 +46,7 @@ def test_delete_order_business_rule_error_returns_409(client, auth_headers_user,
     - Admin com permissão de delete tenta deletar pedido (BUSINESS RULE BLOQUEIA)
     - Deve retornar 409 (não 403)
     
-    Note: Usa admin para passar do RBAC e multi-tenancy, testando a regra de negócio.
+    Note: Usa admin com delete permission para passar do RBAC e multi-tenancy, testando a regra de negócio.
     """
     # Criar pedido com total > 0 (gera financial pending)
     order_data = {"description": "Pedido com lançamento", "total": 200}
@@ -71,7 +71,7 @@ def test_delete_order_business_rule_error_returns_409(client, auth_headers_user,
     db_session.commit()  # Commit transacional isolado
     
     # Tentar deletar pedido com admin que TEM permissão (BUSINESS RULE BLOQUEIA)
-    response = client.delete(f"/orders/{order_id}", headers=auth_headers_admin)
+    response = client.delete(f"/orders/{order_id}", headers=auth_headers_admin_with_delete)
     
     # ✅ DEVE SER 409 (ValueError business rule), não 403
     assert response.status_code == status.HTTP_409_CONFLICT
