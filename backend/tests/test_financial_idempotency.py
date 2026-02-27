@@ -158,7 +158,7 @@ def test_delete_order_removes_financial_entry(
     client: TestClient,
     db_session: Session,
     seed_user_normal: User,
-    auth_headers_user: dict
+    auth_headers_with_delete: dict
 ):
     """
     Test that deleting order (soft delete) cancels associated financial entry (if pending).
@@ -188,7 +188,7 @@ def test_delete_order_removes_financial_entry(
     entry_id = entry.id
     
     # Delete order (soft delete)
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     assert response.status_code == 200
     
     # Verify financial entry still exists with order_id preserved
