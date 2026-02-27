@@ -161,15 +161,15 @@ def test_get_orders_admin_sees_all(
 def test_delete_order_with_pending_financial_succeeds(
     client: TestClient,
     db_session: Session,
-    seed_user_normal: User,
-    auth_headers_user: dict
+    seed_user_with_delete_permission: User,
+    auth_headers_with_delete: dict
 ):
     """
     Test DELETE /orders/{id} works when financial entry is pending.
     """
     # Create order with financial entry
     order = Order(
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         description="Order to delete",
         total=100
     )
@@ -179,7 +179,7 @@ def test_delete_order_with_pending_financial_succeeds(
     
     financial = FinancialEntry(
         order_id=order.id,
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         kind="revenue",
         status="pending",
         amount=100,
@@ -189,7 +189,7 @@ def test_delete_order_with_pending_financial_succeeds(
     db_session.commit()
     
     # Delete order
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     
     assert response.status_code == 200
 
@@ -198,15 +198,15 @@ def test_delete_order_with_pending_financial_succeeds(
 def test_delete_order_with_paid_financial_blocked(
     client: TestClient,
     db_session: Session,
-    seed_user_normal: User,
-    auth_headers_user: dict
+    seed_user_with_delete_permission: User,
+    auth_headers_with_delete: dict
 ):
     """
     Test DELETE /orders/{id} blocked when financial entry is paid.
     """
     # Create order with PAID financial entry
     order = Order(
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         description="Order with paid financial",
         total=100
     )
@@ -216,7 +216,7 @@ def test_delete_order_with_paid_financial_blocked(
     
     financial = FinancialEntry(
         order_id=order.id,
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         kind="revenue",
         status="paid",  # PAID
         amount=100,
@@ -226,7 +226,7 @@ def test_delete_order_with_paid_financial_blocked(
     db_session.commit()
     
     # Try to delete order
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     
     # Should be blocked (400 or 409)
     assert response.status_code in [400, 409]
