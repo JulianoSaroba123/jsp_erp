@@ -1,14 +1,16 @@
 """
 Testes de validação para FinancialService - Coverage estratégico
-COVERAGE TARGET: financial_service.py validações (linhas 62-68, 133-144, 253)
+COVERAGE TARGET: financial_service.py validações (linhas 62-68, 133-144, 198, 253, 261-271)
 """
 import pytest
 from datetime import datetime
 from sqlalchemy.orm import Session
 from decimal import Decimal
+from uuid import uuid4
 
 from app.services.financial_service import FinancialService
 from app.models.financial_entry import FinancialEntry
+from app.models.order import Order
 
 
 class TestFinancialServiceListValidations:
@@ -312,3 +314,80 @@ class TestFinancialServiceUpdateValidations:
         
         error_message = str(exc_info.value)
         assert "Transição inválida" in error_message
+
+
+class TestFinancialServiceCreateFromOrderValidations:
+    """
+    Testes de validação para create_from_order.
+    
+    TARGET: Cobrir validações e idempotência (linhas 193-195, 198)
+    ROI: ~1.0% coverage
+    """
+    
+    def test_create_from_order_negative_amount_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:198 - ValueError quando amount < 0
+        
+        Regra: amount de pedido não pode ser negativo
+        """
+        # Criar order para teste
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Test Order",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        # Act & Assert - amount negativo
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_from_order(
+                db=db_session,
+                order_id=order.id,
+                user_id=seed_user_normal.id,
+                amount=-100.0,
+                description=f"Pedido {order.id} - Test"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "amount de pedido não pode ser negativo" in error_message
+    
+    def test_create_from_order_idempotent_returns_existing(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:193-195 - Retorna entry existente (idempotência)
+        
+        Regra: Se já existe entry para order_id, retorna o existente sem duplicar
+        """
+        # Criar order
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Test Order",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        # Act - Criar primeiro entry
+        entry1 = FinancialService.create_from_order(
+            db=db_session,
+            order_id=order.id,
+            user_id=seed_user_normal.id,
+            amount=100.0,
+            description=f"Pedido {order.id} - Test"
+        )
+        
+        # Act - Tentar criar novamente (deve retornar existente)
+        entry2 = FinancialService.create_from_order(
+            db=db_session,
+            order_id=order.id,
+            user_id=seed_user_normal.id,
+            amount=100.0,
+            description=f"Pedido {order.id} - Test"
+        )
+        
+        # Assert - Deve ser o mesmo entry (idempotência)
+        assert entry1.id == entry2.id
+        assert entry1.order_id == entry2.order_id
+        assert entry1.amount == entry2.amount
