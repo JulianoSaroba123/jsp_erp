@@ -145,6 +145,15 @@ def client_admin(client: TestClient, seed_user_admin: User, auth_headers_admin: 
     return client
 
 
+@pytest.fixture
+def client_with_delete(client: TestClient, seed_user_with_delete_permission: User, auth_headers_with_delete: dict) -> TestClient:
+    """
+    Test client pré-autenticado como usuário com permissão orders:delete.
+    """
+    client.headers.update(auth_headers_with_delete)
+    return client
+
+
 # ============================================================================
 # USER FIXTURES
 # ============================================================================
