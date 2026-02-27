@@ -186,7 +186,7 @@ class TestReportServiceTopEntriesValidations:
         
         # Assert - retorna estrutura válida
         assert "items" in result
-        assert "total" in result
+        assert "period" in result
         
         # Act - limit > MAX_TOP_LIMIT (deve usar MAX_TOP_LIMIT = 50)
         result = ReportService.get_top_entries(
@@ -200,4 +200,4 @@ class TestReportServiceTopEntriesValidations:
         
         # Assert - retorna estrutura válida
         assert "items" in result
-        assert "total" in result
+        assert "period" in result

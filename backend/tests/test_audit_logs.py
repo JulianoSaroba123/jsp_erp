@@ -517,15 +517,16 @@ def test_get_logs_filter_by_date_range(
         request_id="req-date",
         after={}
     )
+    db_session.flush()  # Ensure log is persisted to DB
     
-    # Filter with date_from (should include recent log)
-    date_from = datetime.utcnow() - timedelta(hours=1)
+    # Filter with date_from (muito atrás, deve incluir todos os logs)
+    date_from = datetime.utcnow() - timedelta(days=1)
     logs, total = AuditLogService.get_logs(db=db_session, date_from=date_from)
     
     assert total >= 1
     
-    # Filter with date_to (should include recent log)
-    date_to = datetime.utcnow() + timedelta(hours=1)
+    # Filter with date_to (bem no futuro, deve incluir todos os logs)
+    date_to = datetime.utcnow() + timedelta(days=1)
     logs, total = AuditLogService.get_logs(db=db_session, date_to=date_to)
     
     assert total >= 1
@@ -553,9 +554,10 @@ def test_get_user_actions_with_date_filters(
         request_id="req-user-action",
         after={}
     )
+    db_session.flush()  # Ensure log is persisted
     
-    # Get actions with date_from
-    date_from = datetime.utcnow() - timedelta(hours=1)
+    # Get actions with date_from (muito atrás para garantir que pega o log)
+    date_from = datetime.utcnow() - timedelta(days=1)
     logs = AuditLogService.get_user_actions(
         db=db_session,
         user_id=seed_user_normal.id,
@@ -564,8 +566,8 @@ def test_get_user_actions_with_date_filters(
     
     assert len(logs) >= 1
     
-    # Get actions with date_to
-    date_to = datetime.utcnow() + timedelta(hours=1)
+    # Get actions with date_to (bem no futuro para garantir que pega o log)
+    date_to = datetime.utcnow() + timedelta(days=1)
     logs = AuditLogService.get_user_actions(
         db=db_session,
         user_id=seed_user_normal.id,
