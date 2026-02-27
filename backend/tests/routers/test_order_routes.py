@@ -497,3 +497,170 @@ class TestUpdateOrderEdgeCases:
         data = response.json()
         assert data["description"] == "Updated"
         assert "invalid_field" not in data
+
+
+class TestOrderRoutesErrorPaths:
+    """Testes focados em branches de erro não cobertos"""
+    
+    def test_list_orders_with_invalid_pagination(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve validar parâmetros de paginação inválidos"""
+        client.headers.update(auth_headers_user)
+        
+        # Page negativa ou zero
+        response = client.get("/orders?page=0")
+        assert response.status_code in [400, 422]
+        
+        response = client.get("/orders?page=-1")
+        assert response.status_code in [400, 422]
+    
+    def test_get_order_not_found(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 404 para ID inexistente"""
+        client.headers.update(auth_headers_user)
+        
+        fake_id = uuid4()
+        response = client.get(f"/orders/{fake_id}")
+        
+        assert response.status_code == 404
+        assert "não encontrado" in response.json()["detail"]
+    
+    def test_create_order_with_negative_total(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para total negativo"""
+        client.headers.update(auth_headers_user)
+        
+        payload = {
+            "description": "Test Order",
+            "total": -100.0
+        }
+        
+        response = client.post("/orders", json=payload)
+        
+        # Validação Pydantic ou ValueError -> 400/422
+        assert response.status_code in [400, 422]
+    
+    def test_create_order_with_empty_description(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 para description vazia"""
+        client.headers.update(auth_headers_user)
+        
+        payload = {
+            "description": "",
+            "total": 100.0
+        }
+        
+        response = client.post("/orders", json=payload)
+        
+        # Validação Pydantic (min_length) -> 422
+        assert response.status_code == 422
+    
+    def test_create_order_with_too_long_description(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 para description > 500 chars"""
+        client.headers.update(auth_headers_user)
+        
+        payload = {
+            "description": "x" * 501,
+            "total": 100.0
+        }
+        
+        response = client.post("/orders", json=payload)
+        
+        # Validação Pydantic (max_length) -> 422
+        assert response.status_code == 422
+    
+    def test_update_order_not_found(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 404 ao atualizar pedido inexistente"""
+        client.headers.update(auth_headers_user)
+        
+        fake_id = uuid4()
+        response = client.patch(
+            f"/orders/{fake_id}",
+            json={"description": "Updated"}
+        )
+        
+        assert response.status_code == 404
+    
+    def test_update_order_multi_tenant_violation(
+        self,
+        client: TestClient,
+        seed_user_other: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve retornar 404 ao tentar atualizar pedido de outro usuário"""
+        # Criar pedido de outro usuário
+        order = Order(
+            user_id=seed_user_other.id,
+            description="Other User Order",
+            total=200.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        client.headers.update(auth_headers_user)
+        response = client.patch(
+            f"/orders/{order.id}",
+            json={"description": "Hacked"}
+        )
+        
+        # Retorna 404 (anti-enumeration)
+        assert response.status_code == 404
+    
+    def test_delete_order_not_found(
+        self,
+        client: TestClient,
+        auth_headers_with_delete: dict
+    ):
+        """Deve retornar 404 ao deletar pedido inexistente"""
+        client.headers.update(auth_headers_with_delete)
+        
+        fake_id = uuid4()
+        response = client.delete(f"/orders/{fake_id}")
+        
+        assert response.status_code == 404
+    
+    def test_delete_order_multi_tenant_violation(
+        self,
+        client: TestClient,
+        seed_user_other: User,
+        auth_headers_with_delete: dict,
+        db_session: Session
+    ):
+        """Deve retornar 404 ao tentar deletar pedido de outro usuário"""
+        # Criar pedido de outro usuário
+        order = Order(
+            user_id=seed_user_other.id,
+            description="Other User Order",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        client.headers.update(auth_headers_with_delete)
+        response = client.delete(f"/orders/{order.id}")
+        
+        # Retorna 404 (anti-enumeration)
+        assert response.status_code == 404
