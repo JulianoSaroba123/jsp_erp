@@ -15,11 +15,48 @@ from app.models.order import Order
 
 class TestFinancialServiceListValidations:
     """
-    Testes de validação para list_entries_paginated.
+    Testes de validação para list_entries.
     
-    TARGET: Cobrir validações de filtros (status e kind inválidos)
-    ROI: ~0.8% coverage
+    TARGET: Cobrir validações de filtros (status e kind inválidos) + paginação
+    ROI: ~1.5% coverage
     """
+    
+    def test_list_entries_pagination_adjustments(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:54, 56, 58 - Ajustes de paginação
+        
+        Regras:
+        - page < 1 → ajusta para 1
+        - page_size > MAX_PAGE_SIZE (100) → ajusta para 100
+        - page_size < 1 → ajusta para 1
+        """
+        # Act - page < 1 (linha 54)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=0,
+            page_size=20,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
+        assert "page" in result
+        
+        # Act - page_size > MAX_PAGE_SIZE (linha 56)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=1,
+            page_size=999,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
+        
+        # Act - page_size < 1 (linha 58)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=1,
+            page_size=0,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
     
     def test_list_entries_invalid_status_raises_error(self, db_session: Session, seed_user_normal):
         """

@@ -413,3 +413,174 @@ def test_entity_history_endpoint(
     assert len(history) == 2
     assert history[0]["action"] == "create"
     assert history[1]["action"] == "update"
+
+
+@pytest.mark.audit
+def test_get_logs_filter_by_entity_type(
+    db_session: Session,
+    seed_user_normal: User
+):
+    """
+    COVERAGE: audit_log_service.py:136 - Filtro por entity_type
+    
+    Test filtering logs by entity_type.
+    """
+    # Create order log
+    AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="create",
+        entity_type="order",
+        entity_id=uuid4(),
+        request_id="req-order",
+        after={}
+    )
+    
+    # Create financial_entry log
+    AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="create",
+        entity_type="financial_entry",
+        entity_id=uuid4(),
+        request_id="req-financial",
+        after={}
+    )
+    
+    # Filter by entity_type="order"
+    logs, total = AuditLogService.get_logs(db=db_session, entity_type="order")
+    
+    assert total >= 1
+    assert all(log.entity_type == "order" for log in logs)
+
+
+@pytest.mark.audit
+def test_get_logs_filter_by_entity_id(
+    db_session: Session,
+    seed_user_normal: User
+):
+    """
+    COVERAGE: audit_log_service.py:139 - Filtro por entity_id
+    
+    Test filtering logs by specific entity_id.
+    """
+    order_id = uuid4()
+    
+    # Create multiple logs for same entity
+    AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="create",
+        entity_type="order",
+        entity_id=order_id,
+        request_id="req-1",
+        after={"total": 100}
+    )
+    
+    AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="update",
+        entity_type="order",
+        entity_id=order_id,
+        request_id="req-2",
+        before={"total": 100},
+        after={"total": 150}
+    )
+    
+    # Filter by entity_id
+    logs, total = AuditLogService.get_logs(db=db_session, entity_id=order_id)
+    
+    assert total >= 2
+    assert all(log.entity_id == order_id for log in logs)
+
+
+@pytest.mark.audit
+def test_get_logs_filter_by_date_range(
+    db_session: Session,
+    seed_user_normal: User
+):
+    """
+    COVERAGE: audit_log_service.py:142 (date_from) e 145 (date_to)
+    
+    Test filtering logs by date range.
+    """
+    from datetime import datetime, timedelta
+    
+    # Create log
+    log = AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="create",
+        entity_type="order",
+        entity_id=uuid4(),
+        request_id="req-date",
+        after={}
+    )
+    
+    # Filter with date_from (should include recent log)
+    date_from = datetime.utcnow() - timedelta(hours=1)
+    logs, total = AuditLogService.get_logs(db=db_session, date_from=date_from)
+    
+    assert total >= 1
+    
+    # Filter with date_to (should include recent log)
+    date_to = datetime.utcnow() + timedelta(hours=1)
+    logs, total = AuditLogService.get_logs(db=db_session, date_to=date_to)
+    
+    assert total >= 1
+
+
+@pytest.mark.audit
+def test_get_user_actions_with_date_filters(
+    db_session: Session,
+    seed_user_normal: User
+):
+    """
+    COVERAGE: audit_log_service.py:206 (date_from) e 209 (date_to) em get_user_actions
+    
+    Test get_user_actions with date filters.
+    """
+    from datetime import datetime, timedelta
+    
+    # Create log for user
+    AuditLogService.log_action(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        action="create",
+        entity_type="order",
+        entity_id=uuid4(),
+        request_id="req-user-action",
+        after={}
+    )
+    
+    # Get actions with date_from
+    date_from = datetime.utcnow() - timedelta(hours=1)
+    logs = AuditLogService.get_user_actions(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        date_from=date_from
+    )
+    
+    assert len(logs) >= 1
+    
+    # Get actions with date_to
+    date_to = datetime.utcnow() + timedelta(hours=1)
+    logs = AuditLogService.get_user_actions(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        date_to=date_to
+    )
+    
+    assert len(logs) >= 1
+    
+    # Get actions with both date_from and date_to
+    logs = AuditLogService.get_user_actions(
+        db=db_session,
+        user_id=seed_user_normal.id,
+        date_from=date_from,
+        date_to=date_to
+    )
+    
+    assert len(logs) >= 1
+
