@@ -25,12 +25,10 @@ class TestFinancialServiceListValidations:
         
         Regra: status deve estar em VALID_STATUSES = ['pending', 'paid', 'canceled']
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Act & Assert - status inválido
         with pytest.raises(ValueError) as exc_info:
-            service.list_entries_paginated(
+            FinancialService.list_entries(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 status="invalid_status"
             )
@@ -42,7 +40,8 @@ class TestFinancialServiceListValidations:
         
         # Act & Assert - outro status inválido
         with pytest.raises(ValueError) as exc_info:
-            service.list_entries_paginated(
+            FinancialService.list_entries(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 status="completed"  # Não existe, deve ser "paid"
             )
@@ -56,12 +55,10 @@ class TestFinancialServiceListValidations:
         
         Regra: kind deve estar em VALID_KINDS = ['revenue', 'expense']
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Act & Assert - kind inválido
         with pytest.raises(ValueError) as exc_info:
-            service.list_entries_paginated(
+            FinancialService.list_entries(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="invalid_kind"
             )
@@ -73,7 +70,8 @@ class TestFinancialServiceListValidations:
         
         # Act & Assert - outro kind inválido
         with pytest.raises(ValueError) as exc_info:
-            service.list_entries_paginated(
+            FinancialService.list_entries(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="income"  # Não existe, deve ser "revenue"
             )
@@ -96,12 +94,10 @@ class TestFinancialServiceCreateValidations:
         
         Regra: amount deve ser >= 0
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Act & Assert - amount negativo
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=-100.0,
@@ -111,7 +107,8 @@ class TestFinancialServiceCreateValidations:
         
         # Act & Assert - amount muito negativo
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=-9999.99,
@@ -121,7 +118,8 @@ class TestFinancialServiceCreateValidations:
         
         # Act & Assert - amount None (também deve falhar)
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=None,
@@ -135,12 +133,10 @@ class TestFinancialServiceCreateValidations:
         
         Regra: description é obrigatório e não pode estar vazio após strip()
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Act & Assert - description None
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=100.0,
@@ -150,7 +146,8 @@ class TestFinancialServiceCreateValidations:
         
         # Act & Assert - description vazio
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=100.0,
@@ -160,7 +157,8 @@ class TestFinancialServiceCreateValidations:
         
         # Act & Assert - description apenas espaços
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="expense",
                 amount=100.0,
@@ -174,12 +172,10 @@ class TestFinancialServiceCreateValidations:
         
         Regra: kind deve estar em VALID_KINDS = ['revenue', 'expense']
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Act & Assert - kind inválido
         with pytest.raises(ValueError) as exc_info:
-            service.create_entry(
+            FinancialService.create_manual_entry(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 kind="invalid_kind",
                 amount=100.0,
@@ -206,9 +202,6 @@ class TestFinancialServiceUpdateValidations:
         
         Regra: new_status deve estar em VALID_STATUSES = ['pending', 'paid', 'canceled']
         """
-        # Arrange
-        service = FinancialService(db_session)
-        
         # Criar entry válido para teste
         entry = FinancialEntry(
             user_id=seed_user_normal.id,
@@ -224,7 +217,7 @@ class TestFinancialServiceUpdateValidations:
         
         # Act & Assert - status inválido
         with pytest.raises(ValueError) as exc_info:
-            service.update_status(
+            FinancialService.update_status(
                 db=db_session,
                 entry=entry,
                 new_status="completed"  # Não existe, deve ser "paid"
@@ -237,7 +230,7 @@ class TestFinancialServiceUpdateValidations:
         
         # Act & Assert - outro status inválido
         with pytest.raises(ValueError) as exc_info:
-            service.update_status(
+            FinancialService.update_status(
                 db=db_session,
                 entry=entry,
                 new_status="invalid_status"

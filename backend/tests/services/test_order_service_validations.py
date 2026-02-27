@@ -23,12 +23,10 @@ class TestOrderServiceValidations:
         
         Regra: description é obrigatório e não pode estar vazio após strip()
         """
-        # Arrange
-        service = OrderService(db_session)
-        
         # Act & Assert - description None
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 description=None,
                 total=100.0
@@ -37,7 +35,8 @@ class TestOrderServiceValidations:
         
         # Act & Assert - description vazio
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 description="",
                 total=100.0
@@ -46,7 +45,8 @@ class TestOrderServiceValidations:
         
         # Act & Assert - description apenas espaços
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 description="   ",
                 total=100.0
@@ -59,12 +59,10 @@ class TestOrderServiceValidations:
         
         Regra: total não pode ser negativo
         """
-        # Arrange
-        service = OrderService(db_session)
-        
         # Act & Assert - total negativo
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 description="Test Order",
                 total=-50.0
@@ -73,7 +71,8 @@ class TestOrderServiceValidations:
         
         # Act & Assert - total muito negativo
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=seed_user_normal.id,
                 description="Test Order",
                 total=-9999.99
@@ -87,12 +86,12 @@ class TestOrderServiceValidations:
         Regra: user_id deve existir no banco (integridade referencial)
         """
         # Arrange
-        service = OrderService(db_session)
         fake_user_id = uuid4()
         
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            service.create_order(
+            OrderService.create_order(
+                db=db_session,
                 user_id=fake_user_id,
                 description="Test Order",
                 total=100.0
