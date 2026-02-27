@@ -58,6 +58,9 @@ class TestRBACEnforcement:
         db_session.add(user)
         db_session.commit()
         
+        # Refresh para recarregar relacionamentos após commit
+        db_session.refresh(user)
+        
         # 4. Verificar permissões
         assert user.has_permission("test_orders", "read") is True
         assert user.has_permission("test_orders", "delete") is False
