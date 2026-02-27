@@ -495,3 +495,128 @@ class TestFinancialRoutesEdgeCases:
         
         # Pode ser aceito (limitado a 100) ou rejeitado
         assert response.status_code in [200, 422]
+    
+    def test_list_entries_with_invalid_status_filter(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para status inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/financial/entries?status=invalid_status_xyz")
+        
+        # ValueError no service -> 400 no router
+        assert response.status_code == 400
+    
+    def test_list_entries_with_invalid_kind_filter(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para kind inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/financial/entries?kind=invalid_kind")
+        
+        # ValueError no service -> 400 no router
+        assert response.status_code == 400
+    
+    def test_get_entry_not_found(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 404 para ID inexistente"""
+        client.headers.update(auth_headers_user)
+        
+        fake_id = uuid4()
+        response = client.get(f"/financial/entries/{fake_id}")
+        
+        assert response.status_code == 404
+    
+    def test_create_entry_with_negative_amount(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para amount negativo"""
+        client.headers.update(auth_headers_user)
+        
+        payload = {
+            "kind": "revenue",
+            "amount": -100.0,
+            "description": "Invalid amount",
+            "occurred_at": datetime.now().isoformat()
+        }
+        
+        response = client.post("/financial/entries", json=payload)
+        
+        # Validação Pydantic ou ValueError -> 400/422
+        assert response.status_code in [400, 422]
+    
+    def test_create_entry_with_invalid_kind(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400/422 para kind inválido"""
+        client.headers.update(auth_headers_user)
+        
+        payload = {
+            "kind": "invalid_kind",
+            "amount": 100.0,
+            "description": "Test",
+            "occurred_at": datetime.now().isoformat()
+        }
+        
+        response = client.post("/financial/entries", json=payload)
+        
+        # Validação Pydantic/Literal ou ValueError -> 400/422
+        assert response.status_code in [400, 422]
+    
+    def test_update_status_not_found(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 404 ao atualizar status de entry inexistente"""
+        client.headers.update(auth_headers_user)
+        
+        fake_id = uuid4()
+        response = client.patch(
+            f"/financial/entries/{fake_id}/status",
+            json={"status": "paid"}
+        )
+        
+        assert response.status_code == 404
+    
+    def test_update_status_with_invalid_status(
+        self,
+        client: TestClient,
+        auth_headers_user: dict,
+        db_session: Session,
+        seed_user_normal: User
+    ):
+        """Deve retornar 400 para status inválido"""
+        # Criar entry
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="revenue",
+            amount=100.0,
+            description="Test",
+            status="pending",
+            occurred_at=datetime.now()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        client.headers.update(auth_headers_user)
+        response = client.patch(
+            f"/financial/entries/{entry.id}/status",
+            json={"status": "invalid_status"}
+        )
+        
+        # Validação Pydantic/Literal ou ValueError -> 400/422
+        assert response.status_code in [400, 422]

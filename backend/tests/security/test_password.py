@@ -51,11 +51,18 @@ class TestHashPassword:
         assert verify_password(password, hashed)
     
     def test_hash_password_very_long(self):
-        """Deve funcionar com senhas muito longas"""
+        """Deve funcionar com senhas muito longas (truncadas em 72 bytes pelo bcrypt)"""
         password = "a" * 200
         hashed = hash_password(password)
         
+        # Senha original deve verificar (truncada automaticamente)
         assert verify_password(password, hashed)
+        
+        # Senhas >72 bytes são truncadas, então essas devem ser equivalentes
+        password_72 = "a" * 72
+        password_100 = "a" * 100
+        assert verify_password(password_72, hashed)
+        assert verify_password(password_100, hashed)
 
 
 class TestVerifyPassword:

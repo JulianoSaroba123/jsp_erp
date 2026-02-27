@@ -150,23 +150,23 @@ def test_restore_soft_deleted_order(db_session, seed_user_normal):
 
 
 @pytest.mark.soft_delete
-def test_restore_order_endpoint_requires_admin(client_authenticated, seed_user_normal):
+def test_restore_order_endpoint_requires_admin(client_with_delete, seed_user_with_delete_permission):
     """Endpoint de restore deve exigir role admin."""
     
     # Criar order via API
-    create_response = client_authenticated.post(
+    create_response = client_with_delete.post(
         "/orders",
         json={"description": "Test Order", "total": 200.00}
     )
     assert create_response.status_code == status.HTTP_201_CREATED
     order_id = create_response.json()["id"]
     
-    # Deletar
-    delete_response = client_authenticated.delete(f"/orders/{order_id}")
+    # Deletar (user com permissão orders:delete consegue deletar seu próprio order)
+    delete_response = client_with_delete.delete(f"/orders/{order_id}")
     assert delete_response.status_code == status.HTTP_200_OK
     
-    # Tentar restaurar como user normal (não-admin) - deve falhar
-    restore_response = client_authenticated.post(f"/orders/{order_id}/restore")
+    # Tentar restaurar como user comum (não-admin) - deve falhar
+    restore_response = client_with_delete.post(f"/orders/{order_id}/restore")
     assert restore_response.status_code == status.HTTP_403_FORBIDDEN
 
 

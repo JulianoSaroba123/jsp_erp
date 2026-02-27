@@ -157,8 +157,8 @@ def test_financial_entry_unique_order_constraint(
 def test_delete_order_removes_financial_entry(
     client: TestClient,
     db_session: Session,
-    seed_user_normal: User,
-    auth_headers_user: dict
+    seed_user_with_delete_permission: User,
+    auth_headers_with_delete: dict
 ):
     """
     Test that deleting order (soft delete) cancels associated financial entry (if pending).
@@ -167,7 +167,7 @@ def test_delete_order_removes_financial_entry(
     """
     # Create order with financial
     order = Order(
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         description="Order to delete",
         total=100
     )
@@ -177,7 +177,7 @@ def test_delete_order_removes_financial_entry(
     
     entry = FinancialEntry(
         order_id=order.id,
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         kind="revenue",
         status="pending",
         amount=100,
@@ -188,7 +188,7 @@ def test_delete_order_removes_financial_entry(
     entry_id = entry.id
     
     # Delete order (soft delete)
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     assert response.status_code == 200
     
     # Verify financial entry still exists with order_id preserved

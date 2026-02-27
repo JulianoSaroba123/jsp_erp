@@ -1,0 +1,17 @@
+# Coverage configuration
+# Omit operational scripts and __init__ files from coverage calculation
+
+[run]
+branch = True
+source = app
+omit =
+    app/scripts/*
+    */__init__.py
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 2
+
+[html]
+directory = htmlcov

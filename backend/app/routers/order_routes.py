@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.services.order_service import OrderService
 from app.schemas.order_schema import OrderCreate, OrderCreateRequest, OrderOut, OrderUpdate
-from app.security.deps import get_current_user, get_db, require_admin
+from app.security.deps import get_current_user, get_db, require_admin, require_permission
 from app.models.user import User
 from app.exceptions.errors import ConflictError, NotFoundError, ValidationError
 
@@ -250,17 +250,19 @@ def update_order(
 @router.delete("/{order_id}", status_code=status.HTTP_200_OK)
 def delete_order(
     order_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("orders", "delete")),
     db: Session = Depends(get_db)
 ):
     """
     Remove pedido por ID.
     
     **Autenticação obrigatória (Bearer token)**
+    **Permissão requerida: orders:delete**
     
     Regras multi-tenant:
-    - **admin**: pode deletar qualquer pedido
-    - **user, technician, finance**: só pode deletar seus próprios pedidos
+    - **admin com permissão**: pode deletar qualquer pedido
+    - **user com permissão**: só pode deletar seus próprios pedidos
+    - **sem permissão**: HTTP 403 Forbidden
     """
     try:
         is_admin = current_user.role == "admin"

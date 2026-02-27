@@ -84,3 +84,39 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
         raise ForbiddenError("Acesso restrito a administradores")
     
     return current_user
+
+
+def require_permission(resource: str, action: str):
+    """
+    Factory de dependency para verificar permissão específica via RBAC.
+    
+    Retorna uma função dependency que verifica se o usuário tem a permissão.
+    
+    Usage:
+        @router.delete("/orders/{id}")
+        def delete_order(
+            order_id: UUID,
+            user: User = Depends(require_permission("orders", "delete"))
+        ):
+            ...
+    
+    Args:
+        resource: nome do recurso (ex: 'orders', 'users')
+        action: ação requerida (ex: 'read', 'create', 'update', 'delete')
+    
+    Returns:
+        Dependency function que retorna o usuário se tiver permissão
+        
+    Raises:
+        HTTPException 403: se usuário não tem a permissão
+    """
+    async def permission_checker(current_user: User = Depends(get_current_user)) -> User:
+        # Verificar se usuário tem a permissão via RBAC
+        if not current_user.has_permission(resource, action):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Acesso negado: permissão '{resource}:{action}' requerida"
+            )
+        return current_user
+    
+    return permission_checker

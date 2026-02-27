@@ -23,17 +23,20 @@ Se o banco está vazio:
     alembic upgrade head
 
 """
-from typing import Sequence, Union
+from logging.config import fileConfig
+import os
+import sys
+from pathlib import Path
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '001_baseline'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision = '001_baseline'
+down_revision = None
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:

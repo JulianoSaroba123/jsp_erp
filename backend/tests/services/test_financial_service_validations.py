@@ -1,0 +1,430 @@
+"""
+Testes de validação para FinancialService - Coverage estratégico
+COVERAGE TARGET: financial_service.py validações (linhas 62-68, 133-144, 198, 253, 261-271)
+"""
+import pytest
+from datetime import datetime
+from sqlalchemy.orm import Session
+from decimal import Decimal
+from uuid import uuid4
+
+from app.services.financial_service import FinancialService
+from app.models.financial_entry import FinancialEntry
+from app.models.order import Order
+
+
+class TestFinancialServiceListValidations:
+    """
+    Testes de validação para list_entries.
+    
+    TARGET: Cobrir validações de filtros (status e kind inválidos) + paginação
+    ROI: ~1.5% coverage
+    """
+    
+    def test_list_entries_pagination_adjustments(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:54, 56, 58 - Ajustes de paginação
+        
+        Regras:
+        - page < 1 → ajusta para 1
+        - page_size > MAX_PAGE_SIZE (100) → ajusta para 100
+        - page_size < 1 → ajusta para 1
+        """
+        # Act - page < 1 (linha 54)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=0,
+            page_size=20,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
+        assert "page" in result
+        
+        # Act - page_size > MAX_PAGE_SIZE (linha 56)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=1,
+            page_size=999,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
+        
+        # Act - page_size < 1 (linha 58)
+        result = FinancialService.list_entries(
+            db=db_session,
+            page=1,
+            page_size=0,
+            user_id=seed_user_normal.id
+        )
+        assert "items" in result
+    
+    def test_list_entries_invalid_status_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:62-64 - ValueError quando status é inválido
+        
+        Regra: status deve estar em VALID_STATUSES = ['pending', 'paid', 'canceled']
+        """
+        # Act & Assert - status inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.list_entries(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                status="invalid_status"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "status inválido" in error_message
+        assert "invalid_status" in error_message
+        assert "pending" in error_message  # Deve listar opções válidas
+        
+        # Act & Assert - outro status inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.list_entries(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                status="completed"  # Não existe, deve ser "paid"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "status inválido" in error_message
+    
+    def test_list_entries_invalid_kind_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:66-68 - ValueError quando kind é inválido
+        
+        Regra: kind deve estar em VALID_KINDS = ['revenue', 'expense']
+        """
+        # Act & Assert - kind inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.list_entries(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="invalid_kind"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "kind inválido" in error_message
+        assert "invalid_kind" in error_message
+        assert "revenue" in error_message  # Deve listar opções válidas
+        
+        # Act & Assert - outro kind inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.list_entries(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="income"  # Não existe, deve ser "revenue"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "kind inválido" in error_message
+
+
+class TestFinancialServiceCreateValidations:
+    """
+    Testes de validação para create_entry.
+    
+    TARGET: Cobrir validações de amount, description e kind
+    ROI: ~1.2% coverage
+    """
+    
+    def test_create_entry_negative_amount_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:139 - ValueError quando amount < 0
+        
+        Regra: amount deve ser >= 0
+        """
+        # Act & Assert - amount negativo
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=-100.0,
+                description="Test Entry"
+            )
+        assert "amount deve ser >= 0" in str(exc_info.value)
+        
+        # Act & Assert - amount muito negativo
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=-9999.99,
+                description="Test Entry"
+            )
+        assert "amount deve ser >= 0" in str(exc_info.value)
+        
+        # Act & Assert - amount None (também deve falhar)
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=None,
+                description="Test Entry"
+            )
+        assert "amount deve ser >= 0" in str(exc_info.value)
+    
+    def test_create_entry_empty_description_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:144 - ValueError quando description é vazio
+        
+        Regra: description é obrigatório e não pode estar vazio após strip()
+        """
+        # Act & Assert - description None
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=100.0,
+                description=None
+            )
+        assert "description é obrigatório" in str(exc_info.value)
+        
+        # Act & Assert - description vazio
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=100.0,
+                description=""
+            )
+        assert "description é obrigatório" in str(exc_info.value)
+        
+        # Act & Assert - description apenas espaços
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="expense",
+                amount=100.0,
+                description="   "
+            )
+        assert "description é obrigatório" in str(exc_info.value)
+    
+    def test_create_entry_invalid_kind_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:133-136 - ValueError quando kind é inválido
+        
+        Regra: kind deve estar em VALID_KINDS = ['revenue', 'expense']
+        """
+        # Act & Assert - kind inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_manual_entry(
+                db=db_session,
+                user_id=seed_user_normal.id,
+                kind="invalid_kind",
+                amount=100.0,
+                description="Test Entry"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "kind inválido" in error_message
+        assert "invalid_kind" in error_message
+        assert "revenue" in error_message  # Deve listar opções válidas
+
+
+class TestFinancialServiceUpdateValidations:
+    """
+    Testes de validação para update_status.
+    
+    TARGET: Cobrir validação de status inválido
+    ROI: ~0.5% coverage
+    """
+    
+    def test_update_status_invalid_status_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:253 - ValueError quando status é inválido
+        
+        Regra: new_status deve estar em VALID_STATUSES = ['pending', 'paid', 'canceled']
+        """
+        # Criar entry válido para teste
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            status='pending',
+            amount=Decimal('100.00'),
+            description='Test Entry',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Act & Assert - status inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="completed"  # Não existe, deve ser "paid"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "status inválido" in error_message
+        assert "completed" in error_message
+        assert "pending" in error_message  # Deve listar opções válidas
+        
+        # Act & Assert - outro status inválido
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="invalid_status"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "status inválido" in error_message
+    
+    def test_update_status_same_status_returns_entry(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:261-262 - Retorna entry se status já é o desejado
+        
+        Regra: Se current_status == new_status, apenas retorna (idempotência)
+        """
+        # Criar entry com status 'pending'
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            status='pending',
+            amount=Decimal('100.00'),
+            description='Test Entry',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Act - Tentar mudar para mesmo status
+        result = FinancialService.update_status(
+            db=db_session,
+            entry=entry,
+            new_status="pending"  # Mesmo status atual
+        )
+        
+        # Assert - Deve retornar entry sem erro
+        assert result.id == entry.id
+        assert result.status == "pending"
+    
+    def test_update_status_invalid_transition_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:268-271 - Bloqueia transições inválidas
+        
+        Regra: Apenas 'pending' pode mudar para 'paid' ou 'canceled'
+        Outras transições são bloqueadas (paid -> pending, canceled -> paid, etc)
+        """
+        # Criar entry com status 'paid'
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind='revenue',
+            status='paid',
+            amount=Decimal('100.00'),
+            description='Test Entry',
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+        
+        # Act & Assert - paid -> pending (inválido)
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="pending"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "Transição inválida" in error_message
+        assert "paid" in error_message
+        assert "pending" in error_message
+        
+        # Act & Assert - paid -> canceled (inválido)
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.update_status(
+                db=db_session,
+                entry=entry,
+                new_status="canceled"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "Transição inválida" in error_message
+
+
+class TestFinancialServiceCreateFromOrderValidations:
+    """
+    Testes de validação para create_from_order.
+    
+    TARGET: Cobrir validações e idempotência (linhas 193-195, 198)
+    ROI: ~1.0% coverage
+    """
+    
+    def test_create_from_order_negative_amount_raises_error(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:198 - ValueError quando amount < 0
+        
+        Regra: amount de pedido não pode ser negativo
+        """
+        # Criar order para teste
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Test Order",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        # Act & Assert - amount negativo
+        with pytest.raises(ValueError) as exc_info:
+            FinancialService.create_from_order(
+                db=db_session,
+                order_id=order.id,
+                user_id=seed_user_normal.id,
+                amount=-100.0,
+                description=f"Pedido {order.id} - Test"
+            )
+        
+        error_message = str(exc_info.value)
+        assert "amount de pedido não pode ser negativo" in error_message
+    
+    def test_create_from_order_idempotent_returns_existing(self, db_session: Session, seed_user_normal):
+        """
+        COVERAGE: financial_service.py:193-195 - Retorna entry existente (idempotência)
+        
+        Regra: Se já existe entry para order_id, retorna o existente sem duplicar
+        """
+        # Criar order
+        order = Order(
+            user_id=seed_user_normal.id,
+            description="Test Order",
+            total=100.0
+        )
+        db_session.add(order)
+        db_session.commit()
+        db_session.refresh(order)
+        
+        # Act - Criar primeiro entry
+        entry1 = FinancialService.create_from_order(
+            db=db_session,
+            order_id=order.id,
+            user_id=seed_user_normal.id,
+            amount=100.0,
+            description=f"Pedido {order.id} - Test"
+        )
+        
+        # Act - Tentar criar novamente (deve retornar existente)
+        entry2 = FinancialService.create_from_order(
+            db=db_session,
+            order_id=order.id,
+            user_id=seed_user_normal.id,
+            amount=100.0,
+            description=f"Pedido {order.id} - Test"
+        )
+        
+        # Assert - Deve ser o mesmo entry (idempotência)
+        assert entry1.id == entry2.id
+        assert entry1.order_id == entry2.order_id
+        assert entry1.amount == entry2.amount

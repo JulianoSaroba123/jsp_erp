@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.models.role import user_roles
 
 
 class User(Base):
@@ -42,6 +43,31 @@ class User(Base):
         lazy="select",
         foreign_keys="[FinancialEntry.user_id]"
     )
+    
+    # RBAC: Relacionamento N:N com roles
+    roles = relationship(
+        "Role",
+        secondary=user_roles,
+        back_populates="users",
+        lazy="select"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', role='{self.role}')>"
+    
+    def has_permission(self, resource: str, action: str) -> bool:
+        """
+        Verifica se o usuário tem uma permissão específica.
+        
+        Args:
+            resource: nome do recurso (ex: 'orders')
+            action: ação (ex: 'delete')
+            
+        Returns:
+            True se o usuário tem a permissão
+        """
+        for role in self.roles:
+            for permission in role.permissions:
+                if permission.resource == resource and permission.action == action:
+                    return True
+        return False

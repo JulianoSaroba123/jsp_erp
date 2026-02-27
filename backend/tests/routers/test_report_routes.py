@@ -360,6 +360,257 @@ class TestReportRoutesEdgeCases:
         assert response.status_code in [200, 400, 422]
 
 
+class TestReportRoutesErrorBranches:
+    """Testes focados em branches de erro não cobertos"""
+    
+    def test_dre_with_date_range_too_large(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para intervalo > 366 dias"""
+        client.headers.update(auth_headers_user)
+        
+        # Intervalo de 2 anos (muito grande)
+        date_from = "2023-01-01"
+        date_to = "2024-12-31"
+        
+        response = client.get(
+            f"/reports/financial/dre?date_from={date_from}&date_to={date_to}"
+        )
+        
+        # ValueError no service -> 400 no router
+        assert response.status_code == 400
+    
+    def test_dre_missing_required_params(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 quando falta parâmetro obrigatório"""
+        client.headers.update(auth_headers_user)
+        
+        # Sem date_from
+        response = client.get("/reports/financial/dre?date_to=2024-12-31")
+        assert response.status_code == 422
+        
+        # Sem date_to
+        response = client.get("/reports/financial/dre?date_from=2024-01-01")
+        assert response.status_code == 422
+    
+    def test_cashflow_daily_with_invalid_date_format(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 para formato de data inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get(
+            "/reports/financial/cashflow/daily?date_from=01/01/2024&date_to=31/12/2024"
+        )
+        
+        # FastAPI validation -> 422
+        assert response.status_code == 422
+    
+    def test_cashflow_daily_missing_params(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 quando falta parâmetro obrigatório"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/cashflow/daily")
+        assert response.status_code == 422
+    
+    def test_aging_with_invalid_reference_date(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 para reference_date inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get(
+            "/reports/financial/pending/aging?date_from=2024-01-01&date_to=2024-12-31&reference_date=invalid"
+        )
+        
+        # FastAPI validation -> 422
+        assert response.status_code == 422
+    
+    def test_aging_missing_required_params(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 422 quando falta parâmetro obrigatório"""
+        client.headers.update(auth_headers_user)
+        
+        # Sem date_from
+        response = client.get("/reports/financial/pending/aging?date_to=2024-12-31")
+        assert response.status_code == 422
+    
+    def test_top_entries_with_invalid_kind(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para kind inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/top?kind=invalid_kind")
+        
+        # ValueError no service -> 400 no router
+        assert response.status_code in [400, 422]
+    
+    def test_top_entries_with_invalid_status(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve retornar 400 para status inválido"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/top?status=invalid_status")
+        
+        # ValueError no service -> 400 no router
+        assert response.status_code in [400, 422]
+    
+    def test_top_entries_with_negative_limit(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve validar limit negativo"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/top?limit=-10")
+        
+        # Validação FastAPI -> 422
+        assert response.status_code == 422
+    
+    def test_top_entries_with_zero_limit(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve validar limit zero"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/top?limit=0")
+        
+        # Validação FastAPI ou ValueError -> 400/422
+        assert response.status_code in [400, 422]
+    
+    def test_top_entries_with_excessive_limit(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Deve validar limit muito alto (> 100)"""
+        client.headers.update(auth_headers_user)
+        
+        response = client.get("/reports/financial/top?limit=1000")
+        
+        # Pode aceitar (limitando a 100) ou rejeitar
+        assert response.status_code in [200, 422]
+    
+    def test_dre_multi_tenant_user_sees_own_data_only(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        seed_user_other: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """User normal deve ver apenas seus próprios dados no DRE"""
+        today = datetime.utcnow()
+        
+        # Criar entry para user_normal
+        entry_own = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="revenue",
+            amount=100.0,
+            description="Own Revenue",
+            status="paid",
+            occurred_at=today
+        )
+        db_session.add(entry_own)
+        
+        # Criar entry para outro usuário
+        entry_other = FinancialEntry(
+            user_id=seed_user_other.id,
+            kind="revenue",
+            amount=500.0,
+            description="Other Revenue",
+            status="paid",
+            occurred_at=today
+        )
+        db_session.add(entry_other)
+        db_session.commit()
+        
+        client.headers.update(auth_headers_user)
+        date_from = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+        date_to = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        response = client.get(
+            f"/reports/financial/dre?date_from={date_from}&date_to={date_to}"
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Deve ver apenas 100.0 (próprio), não 500.0 (outro)
+        assert data["revenue_paid_total"] == 100.0
+    
+    def test_dre_admin_sees_all_data(
+        self,
+        client: TestClient,
+        seed_user_admin: User,
+        seed_user_normal: User,
+        seed_user_other: User,
+        auth_headers_admin: dict,
+        db_session: Session
+    ):
+        """Admin deve ver todos os dados consolidados no DRE"""
+        today = datetime.utcnow()
+        
+        # Criar entries de diferentes usuários
+        entry1 = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="revenue",
+            amount=100.0,
+            description="User 1",
+            status="paid",
+            occurred_at=today
+        )
+        entry2 = FinancialEntry(
+            user_id=seed_user_other.id,
+            kind="revenue",
+            amount=200.0,
+            description="User 2",
+            status="paid",
+            occurred_at=today
+        )
+        db_session.add_all([entry1, entry2])
+        db_session.commit()
+        
+        client.headers.update(auth_headers_admin)
+        date_from = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+        date_to = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        response = client.get(
+            f"/reports/financial/dre?date_from={date_from}&date_to={date_to}"
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Admin deve ver consolidado: 100 + 200 = 300
+        assert data["revenue_paid_total"] == 300.0
+
+
 
 
 
