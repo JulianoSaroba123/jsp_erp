@@ -425,7 +425,7 @@ class TestRestoreOrder:
         client: TestClient,
         seed_user_normal: User,
         seed_admin_with_delete_permission: User,
-        auth_headers_admin: dict,
+        auth_headers_admin_with_delete: dict,
         db_session: Session
     ):
         """Deve restaurar pedido deletado com sucesso"""
@@ -440,7 +440,7 @@ class TestRestoreOrder:
         db_session.refresh(order)
         
         # Deletar (admin com permissão pode deletar qualquer pedido)
-        client.headers.update(auth_headers_admin)
+        client.headers.update(auth_headers_admin_with_delete)
         client.delete(f"/orders/{order.id}")
         
         # Restaurar (admin pode restaurar)

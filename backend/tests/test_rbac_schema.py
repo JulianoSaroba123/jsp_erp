@@ -14,6 +14,30 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
+@pytest.fixture(autouse=True, scope="function")
+def clean_rbac_test_data(db_session: Session):
+    """
+    Limpa dados de teste RBAC antes de cada teste neste módulo.
+    
+    Remove apenas registros criados por testes (resource começando com 'test_'),
+    preservando dados de seed necessários para outros testes.
+    """
+    yield  # Executa o teste primeiro
+    
+    # Cleanup após o teste
+    db_session.execute(text("""
+        DELETE FROM core.role_permissions 
+        WHERE role_id IN (SELECT id FROM core.roles WHERE name LIKE 'test_%')
+    """))
+    db_session.execute(text("""
+        DELETE FROM core.user_roles 
+        WHERE role_id IN (SELECT id FROM core.roles WHERE name LIKE 'test_%')
+    """))
+    db_session.execute(text("DELETE FROM core.roles WHERE name LIKE 'test_%'"))
+    db_session.execute(text("DELETE FROM core.permissions WHERE resource LIKE 'test_%'"))
+    db_session.commit()
+
+
 class TestRBACSchema:
     """Testes de estrutura do schema RBAC"""
     
