@@ -265,12 +265,12 @@ def test_anti_enumeration_other_user_order_returns_404(
 @pytest.mark.integration
 def test_delete_nonexistent_order_returns_404(
     client: TestClient,
-    auth_headers_user: dict
+    auth_headers_with_delete: dict
 ):
     """
     Test deleting non-existent order returns 404.
     """
     fake_uuid = "00000000-0000-0000-0000-000000000000"
-    response = client.delete(f"/orders/{fake_uuid}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{fake_uuid}", headers=auth_headers_with_delete)
     
     assert response.status_code == 404
