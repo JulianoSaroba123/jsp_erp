@@ -26,7 +26,7 @@ def seed_permissions(db: Session):
         ("orders", "update", "Atualizar pedidos"),
         ("orders", "delete", "Deletar pedidos"),
         
-        # Users
+        #Users
         ("users", "read", "Visualizar usuários"),
         ("users", "create", "Criar usuários"),
         ("users", "update", "Atualizar usuários"),
@@ -41,6 +41,24 @@ def seed_permissions(db: Session):
         # Reports
         ("reports", "read", "Visualizar relatórios"),
         ("reports", "export", "Exportar relatórios"),
+        
+        # Customers
+        ("customers", "read", "Visualizar clientes"),
+        ("customers", "create", "Criar clientes"),
+        ("customers", "update", "Atualizar clientes"),
+        ("customers", "delete", "Deletar clientes"),
+        
+        # Suppliers
+        ("suppliers", "read", "Visualizar fornecedores"),
+        ("suppliers", "create", "Criar fornecedores"),
+        ("suppliers", "update", "Atualizar fornecedores"),
+        ("suppliers", "delete", "Deletar fornecedores"),
+        
+        # Products
+        ("products", "read", "Visualizar produtos"),
+        ("products", "create", "Criar produtos"),
+        ("products", "update", "Atualizar produtos"),
+        ("products", "delete", "Deletar produtos"),
     ]
     
     created_permissions = {}
@@ -110,6 +128,12 @@ def seed_roles(db: Session, permissions: dict):
         permissions["financial:read"],
         permissions["financial:create"],
         permissions["reports:read"],
+        permissions["customers:read"],
+        permissions["customers:create"],
+        permissions["customers:update"],
+        permissions["products:read"],
+        permissions["products:create"],
+        permissions["products:update"],
     ]
     user_role.permissions = user_permissions
     
@@ -135,6 +159,8 @@ def seed_roles(db: Session, permissions: dict):
         permissions["reports:read"],
         permissions["reports:export"],
         permissions["orders:read"],  # Apenas leitura de orders
+        permissions["customers:read"],  # Apenas leitura de clientes
+        permissions["products:read"],  # Apenas leitura de produtos
     ]
     finance_role.permissions = finance_permissions
     

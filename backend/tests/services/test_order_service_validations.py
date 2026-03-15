@@ -239,14 +239,12 @@ class TestOrderServiceDeleteValidations:
         db_session.refresh(order)
         
         # Act & Assert - seed_user_admin (não-admin) tentando deletar order de outro usuário
-        with pytest.raises(ValueError) as exc_info:
-            OrderService.delete_order(
-                db=db_session,
-                order_id=order.id,
-                user_id=seed_user_admin.id,  # Usuário diferente do dono
-                is_admin=False  # Não é admin
-            )
+        result = OrderService.delete_order(
+            db=db_session,
+            order_id=order.id,
+            user_id=seed_user_admin.id,  # Usuário diferente do dono
+            is_admin=False  # Não é admin
+        )
         
-        error_message = str(exc_info.value)
-        assert "permissão" in error_message.lower()
-        assert "deletar" in error_message.lower()
+        # Deve retornar False (anti-enumeration - retorna 404 em vez de 403)
+        assert result is False

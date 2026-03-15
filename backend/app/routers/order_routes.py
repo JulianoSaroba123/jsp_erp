@@ -8,7 +8,7 @@ Responsabilidade: receber requests e chamar OrderService.
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.services.order_service import OrderService
@@ -23,8 +23,8 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 
 @router.get("", status_code=status.HTTP_200_OK)
 def list_orders(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1, description="Número da página (mínimo 1)"),
+    page_size: int = Query(20, ge=1, le=100, description="Itens por página (1-100)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

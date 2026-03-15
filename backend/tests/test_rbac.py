@@ -43,8 +43,12 @@ class TestRBACEnforcement:
         reader_role = db_session.query(Role).filter_by(name="reader_test_unique").first()
         if not reader_role:
             reader_role = Role(name="reader_test_unique")
-            reader_role.permissions.append(read_permission)
             db_session.add(reader_role)
+            db_session.flush()
+        
+        # Garantir que read_permission está associado ao role (idempotente)
+        if read_permission not in reader_role.permissions:
+            reader_role.permissions.append(read_permission)
             db_session.flush()
         
         # 3. Criar user com role reader
@@ -57,9 +61,13 @@ class TestRBACEnforcement:
         user.roles.append(reader_role)
         db_session.add(user)
         db_session.commit()
-        
-        # Refresh para recarregar relacionamentos após commit
         db_session.refresh(user)
+        
+        # For\u00e7ar carregamento dos roles e permissions (lazy loading)
+        # Acesso for\u00e7a SQLAlchemy a carregar relacionamentos antes de assertions
+        _ = len(user.roles)  # Carrega roles
+        for role in user.roles:
+            _ = len(role.permissions)  # Carrega permissions de cada role
         
         # 4. Verificar permissões
         assert user.has_permission("test_orders", "read") is True
@@ -81,9 +89,11 @@ class TestRBACModels:
     
     def test_role_permissions_association(self, db_session: Session):
         """Testa associação many-to-many entre Role e Permission"""
-        # Criar permissions com nomes únicos
-        perm1 = Permission(resource="test_resource_assoc", action="read")
-        perm2 = Permission(resource="test_resource_assoc", action="create")
+        # Criar permissions com nomes únicos (idempotente)
+        import uuid
+        unique_id = str(uuid.uuid4())[:8]
+        perm1 = Permission(resource=f"test_res_assoc_{unique_id}", action="read")
+        perm2 = Permission(resource=f"test_res_assoc_{unique_id}", action="create")
         db_session.add_all([perm1, perm2])
         db_session.flush()
         

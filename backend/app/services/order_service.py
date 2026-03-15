@@ -283,8 +283,9 @@ class OrderService:
             raise ValueError("user_id é obrigatório para soft delete")
         
         # Validação multi-tenant: user só pode deletar seus próprios pedidos
+        # Retornar False para anti-enumeration (404 ao invés de 403)
         if not is_admin and order.user_id != user_id:
-            raise ValueError("Você não tem permissão para deletar este pedido")
+            return False
 
         # INTEGRAÇÃO FINANCEIRA: Cancelar lançamento se existir e status='pending'
         # Se status='paid', lança exceção (bloqueia delete)

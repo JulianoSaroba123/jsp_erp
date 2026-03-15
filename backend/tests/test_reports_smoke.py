@@ -35,14 +35,16 @@ def test_dre_report_structure(
         kind="revenue",
         status="paid",
         amount=1000,
-        description="Revenue 1"
+        description="Revenue 1",
+        occurred_at=datetime(2026, 2, 15, 12, 0, 0)
     )
     entry2 = FinancialEntry(
         user_id=seed_user_normal.id,
         kind="expense",
         status="paid",
         amount=300,
-        description="Expense 1"
+        description="Expense 1",
+        occurred_at=datetime(2026, 2, 20, 14, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()
@@ -272,14 +274,16 @@ def test_reports_multi_tenant_admin_sees_all(
         kind="revenue",
         status="paid",
         amount=100,
-        description="User entry"
+        description="User entry",
+        occurred_at=datetime(2026, 2, 10, 10, 0, 0)
     )
     entry2 = FinancialEntry(
         user_id=seed_user_other.id,
         kind="revenue",
         status="paid",
         amount=200,
-        description="Other user entry"
+        description="Other user entry",
+        occurred_at=datetime(2026, 2, 12, 11, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()
@@ -314,14 +318,16 @@ def test_reports_multi_tenant_user_sees_own_only(
         kind="revenue",
         status="paid",
         amount=100,
-        description="User entry"
+        description="User entry",
+        occurred_at=datetime(2026, 2, 10, 10, 0, 0)
     )
     entry2 = FinancialEntry(
         user_id=seed_user_other.id,
         kind="revenue",
         status="paid",
         amount=200,
-        description="Other user entry"
+        description="Other user entry",
+        occurred_at=datetime(2026, 2, 12, 11, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()

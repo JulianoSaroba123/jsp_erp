@@ -168,6 +168,11 @@ def seed_user_admin(db_session: Session) -> User:
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "admin@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned
+        admin_role = db_session.query(Role).filter_by(name="admin").first()
+        if admin_role and admin_role not in existing.roles:
+            existing.roles.append(admin_role)
+            db_session.commit()
         return existing
     
     user = User(
@@ -178,6 +183,13 @@ def seed_user_admin(db_session: Session) -> User:
         is_active=True
     )
     db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role (admin role with all permissions)
+    admin_role = db_session.query(Role).filter_by(name="admin").first()
+    if admin_role:
+        user.roles.append(admin_role)
+    
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -193,6 +205,11 @@ def seed_user_normal(db_session: Session) -> User:
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "user@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned
+        user_role = db_session.query(Role).filter_by(name="user").first()
+        if user_role and user_role not in existing.roles:
+            existing.roles.append(user_role)
+            db_session.commit()
         return existing
     
     user = User(
@@ -203,6 +220,13 @@ def seed_user_normal(db_session: Session) -> User:
         is_active=True
     )
     db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role (user role with products:read/create/update)
+    user_role = db_session.query(Role).filter_by(name="user").first()
+    if user_role:
+        user.roles.append(user_role)
+    
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -218,6 +242,11 @@ def seed_user_other(db_session: Session) -> User:
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "other@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned
+        user_role = db_session.query(Role).filter_by(name="user").first()
+        if user_role and user_role not in existing.roles:
+            existing.roles.append(user_role)
+            db_session.commit()
         return existing
     
     user = User(
@@ -227,6 +256,14 @@ def seed_user_other(db_session: Session) -> User:
         role="user",
         is_active=True
     )
+    db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role
+    user_role = db_session.query(Role).filter_by(name="user").first()
+    if user_role:
+        user.roles.append(user_role)
+    
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)

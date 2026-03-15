@@ -22,7 +22,7 @@ from app.middleware.logging import LoggingMiddleware
 from app.exceptions.handlers import register_exception_handlers
 
 # Routers
-from app.routers import health_routes, user_routes, order_routes, financial_routes, report_routes, audit_log_routes
+from app.routers import health_routes, user_routes, order_routes, financial_routes, report_routes, audit_log_routes, customer_routes, product_routes, supplier_router, service_order_routes, proposal_routes
 from app.auth import router as auth_router
 
 
@@ -114,6 +114,11 @@ app.include_router(order_routes.router)
 app.include_router(financial_routes.router)  # ETAPA 3A: Financeiro
 app.include_router(report_routes.router)  # ETAPA 4: Relatórios Financeiros
 app.include_router(audit_log_routes.router)  # ETAPA 6: Audit Logs
+app.include_router(customer_routes.router)  # ETAPA 6: Clientes
+app.include_router(product_routes.router)  # ETAPA 6: Produtos
+app.include_router(supplier_router.router)  # ETAPA 6: Fornecedores
+app.include_router(service_order_routes.router)  # ETAPA 6: Ordens de Serviço
+app.include_router(proposal_routes.router)  # ETAPA 6: Propostas Comerciais
 
 
 # ========================================
