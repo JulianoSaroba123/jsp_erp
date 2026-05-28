@@ -54,7 +54,7 @@ export function ProductForm({ mode, initialData, onSuccess, onCancel }: ProductF
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'geral' | 'fisico' | 'precos' | 'estoque'>('geral');
   const [flashField, setFlashField] = useState<string | null>(null);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
@@ -94,7 +94,6 @@ export function ProductForm({ mode, initialData, onSuccess, onCancel }: ProductF
 
   // Watch para cálculos automáticos
   const costPrice = useWatch({ control, name: 'cost_price' });
-  const salePrice = useWatch({ control, name: 'sale_price' });
   const markup = useWatch({ control, name: 'markup' });
   const controlaEstoque = useWatch({ control, name: 'controla_estoque' });
 
@@ -176,7 +175,17 @@ export function ProductForm({ mode, initialData, onSuccess, onCancel }: ProductF
   const updateMutation = useMutation({
     mutationFn: (data: ProductFormData) => {
       if (!initialData?.id) throw new Error('ID não fornecido');
-      return updateProduct(initialData.id, data);
+
+      const updateData = {
+        ...data,
+        peso: data.peso ?? undefined,
+        markup: data.markup ?? undefined,
+        margem_lucro: data.margem_lucro ?? undefined,
+        estoque_maximo: data.estoque_maximo ?? undefined,
+        fornecedor_id: data.fornecedor_id ?? undefined,
+      };
+
+      return updateProduct(initialData.id, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
