@@ -52,10 +52,10 @@ def get_test_database_url() -> str:
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """
-    Verifica que o banco de teste existe com schema correto.
+    Verifica que o banco de teste existe com schema correto e aplica migrations.
 
-    O banco deve ser preparado com: .\\prepare_test_db.ps1
-    Este fixture apenas valida a conectividade e importa os modelos.
+    O banco deve existir, mas o schema e reparos idempotentes ficam sob controle
+    do Alembic para evitar drift entre models e banco de teste.
     """
     test_db_url = get_test_database_url()
 
@@ -71,6 +71,15 @@ def setup_test_database():
     # Verificar conectividade
     with test_engine.connect() as conn:
         conn.execute(text("SELECT 1"))
+
+    env = os.environ.copy()
+    env["DATABASE_URL_TEST"] = test_db_url
+    subprocess.run(
+        ["alembic", "upgrade", "head"],
+        cwd=os.path.dirname(os.path.dirname(__file__)),
+        env=env,
+        check=True,
+    )
 
     yield
 
@@ -103,6 +112,8 @@ def db_session(setup_test_database) -> Generator[Session, None, None]:
         session.execute(text("TRUNCATE TABLE core.audit_logs CASCADE"))
         session.execute(text("TRUNCATE TABLE core.financial_entries CASCADE"))
         session.execute(text("TRUNCATE TABLE core.orders CASCADE"))
+        session.execute(text("TRUNCATE TABLE core.customers CASCADE"))
+        session.execute(text("TRUNCATE TABLE core.products CASCADE"))
         session.execute(text("TRUNCATE TABLE core.users CASCADE"))
         session.commit()
         session.close()
