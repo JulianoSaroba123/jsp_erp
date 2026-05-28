@@ -14,6 +14,7 @@ from app.models.service_order import (
     ServiceOrderItem,
     ServiceOrderProduct,
     ServiceOrderInstallment,
+    ServiceOrderEquipment,
     ServiceOrderAttachment
 )
 
@@ -77,6 +78,7 @@ class ServiceOrderRepository:
         page: int, 
         page_size: int, 
         include_deleted: bool = False,
+        user_id: Optional[UUID] = None,
         status: Optional[str] = None,
         priority: Optional[str] = None,
         customer_id: Optional[UUID] = None,
@@ -92,6 +94,9 @@ class ServiceOrderRepository:
         # Filtro de soft delete
         if not include_deleted:
             query = query.filter(ServiceOrder.deleted_at.is_(None))
+
+        if user_id is not None:
+            query = query.filter(ServiceOrder.user_id == user_id)
         
         # Filtros opcionais
         if status:
@@ -123,6 +128,7 @@ class ServiceOrderRepository:
     def count_total(
         db: Session, 
         include_deleted: bool = False,
+        user_id: Optional[UUID] = None,
         status: Optional[str] = None,
         priority: Optional[str] = None,
         customer_id: Optional[UUID] = None,
@@ -133,6 +139,9 @@ class ServiceOrderRepository:
         
         if not include_deleted:
             query = query.filter(ServiceOrder.deleted_at.is_(None))
+
+        if user_id is not None:
+            query = query.filter(ServiceOrder.user_id == user_id)
         
         if status:
             query = query.filter(ServiceOrder.status == status)
@@ -169,6 +178,7 @@ class ServiceOrderRepository:
             .options(
                 joinedload(ServiceOrder.items),
                 joinedload(ServiceOrder.products),
+                joinedload(ServiceOrder.equipments),
                 joinedload(ServiceOrder.installments),
                 joinedload(ServiceOrder.attachments)
             )
@@ -178,6 +188,32 @@ class ServiceOrderRepository:
             )
             .first()
         )
+
+    @staticmethod
+    def get_by_id_and_user(
+        db: Session,
+        service_order_id: UUID,
+        user_id: UUID,
+        include_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> Optional[ServiceOrder]:
+        query = db.query(ServiceOrder)
+        if with_relations:
+            query = query.options(
+                joinedload(ServiceOrder.items),
+                joinedload(ServiceOrder.products),
+                joinedload(ServiceOrder.equipments),
+                joinedload(ServiceOrder.installments),
+                joinedload(ServiceOrder.attachments),
+            )
+
+        query = query.filter(
+            ServiceOrder.id == service_order_id,
+            ServiceOrder.user_id == user_id,
+        )
+        if not include_deleted:
+            query = query.filter(ServiceOrder.deleted_at.is_(None))
+        return query.first()
 
     @staticmethod
     def get_by_number(db: Session, number: str) -> Optional[ServiceOrder]:
@@ -431,6 +467,48 @@ class ServiceOrderInstallmentRepository:
     def delete(db: Session, installment: ServiceOrderInstallment) -> None:
         """Remove parcela."""
         db.delete(installment)
+        db.commit()
+
+
+class ServiceOrderEquipmentRepository:
+    """Repositório para equipamentos da OS."""
+
+    @staticmethod
+    def get_by_id(db: Session, equipment_id: UUID) -> Optional[ServiceOrderEquipment]:
+        return (
+            db.query(ServiceOrderEquipment)
+            .filter(ServiceOrderEquipment.id == equipment_id)
+            .first()
+        )
+
+    @staticmethod
+    def list_by_service_order(db: Session, service_order_id: UUID) -> List[ServiceOrderEquipment]:
+        return (
+            db.query(ServiceOrderEquipment)
+            .filter(ServiceOrderEquipment.service_order_id == service_order_id)
+            .all()
+        )
+
+    @staticmethod
+    def create(db: Session, equipment_data: dict) -> ServiceOrderEquipment:
+        equipment = ServiceOrderEquipment(**equipment_data)
+        db.add(equipment)
+        db.commit()
+        db.refresh(equipment)
+        return equipment
+
+    @staticmethod
+    def update(db: Session, equipment: ServiceOrderEquipment, update_data: dict) -> ServiceOrderEquipment:
+        for key, value in update_data.items():
+            if hasattr(equipment, key):
+                setattr(equipment, key, value)
+        db.commit()
+        db.refresh(equipment)
+        return equipment
+
+    @staticmethod
+    def delete(db: Session, equipment: ServiceOrderEquipment) -> None:
+        db.delete(equipment)
         db.commit()
 
 

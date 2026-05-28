@@ -51,7 +51,7 @@ class AuditLog(Base):
             name='check_audit_action'
         ),
         CheckConstraint(
-            "entity_type IN ('order', 'financial_entry', 'user')",
+            "entity_type IN ('order', 'financial_entry', 'user', 'service_order')",
             name='check_audit_entity_type'
         ),
         {'schema': 'core'}
