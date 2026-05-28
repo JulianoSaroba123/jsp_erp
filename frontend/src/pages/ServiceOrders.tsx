@@ -10,6 +10,8 @@ import {
   getStatusColor,
   getPriorityLabel,
   getPriorityColor,
+  getTipoOrdemLabel,
+  getTipoOrdemColor,
 } from '../api/serviceOrders';
 import { usePermissions } from '../auth/usePermissions';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/State';
@@ -163,17 +165,47 @@ export function ServiceOrders() {
                   ? {
                       id: selectedOrderData.id,
                       customer_id: selectedOrderData.customer_id,
+                      order_type: selectedOrderData.order_type,
+                      service_type: selectedOrderData.service_type,
+                      location: selectedOrderData.location,
                       title: selectedOrderData.title,
                       description: selectedOrderData.description,
                       requester: selectedOrderData.requester,
                       problem_description: selectedOrderData.problem_description,
+                      status: selectedOrderData.status,
                       priority: selectedOrderData.priority,
+                      opening_date: selectedOrderData.opening_date,
                       expected_date: selectedOrderData.expected_date,
+                      scheduled_date: selectedOrderData.scheduled_date,
+                      completed_date: selectedOrderData.completed_date,
+                      start_time: selectedOrderData.start_time,
+                      end_time: selectedOrderData.end_time,
+                      total_hours: selectedOrderData.total_hours,
+                      initial_km: selectedOrderData.initial_km,
+                      final_km: selectedOrderData.final_km,
+                      total_km: selectedOrderData.total_km,
                       technician: selectedOrderData.technician,
                       equipment: selectedOrderData.equipment,
                       brand_model: selectedOrderData.brand_model,
                       serial_number: selectedOrderData.serial_number,
                       reported_defect: selectedOrderData.reported_defect,
+                      technical_diagnosis: selectedOrderData.technical_diagnosis,
+                      solution: selectedOrderData.solution,
+                      notes: selectedOrderData.notes,
+                      attachments_notes: selectedOrderData.attachments_notes,
+                      service_amount: selectedOrderData.service_amount,
+                      parts_amount: selectedOrderData.parts_amount,
+                      total_amount: selectedOrderData.total_amount,
+                      warranty_days: selectedOrderData.warranty_days,
+                      discount_amount: selectedOrderData.discount_amount,
+                      payment_condition: selectedOrderData.payment_condition,
+                      installment_count: selectedOrderData.installment_count,
+                      down_payment: selectedOrderData.down_payment,
+                      payment_status: selectedOrderData.payment_status,
+                      items: selectedOrderData.items,
+                      products: selectedOrderData.products,
+                      installments: selectedOrderData.installments,
+                      attachments: selectedOrderData.attachments,
                     }
                   : undefined
               }
@@ -278,6 +310,12 @@ export function ServiceOrders() {
                       Cliente
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Tipo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Técnico
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -310,6 +348,14 @@ export function ServiceOrders() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {order.customer_name || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTipoOrdemColor(order.order_type)}`}>
+                          {getTipoOrdemLabel(order.order_type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {order.technician || 'Sem técnico'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

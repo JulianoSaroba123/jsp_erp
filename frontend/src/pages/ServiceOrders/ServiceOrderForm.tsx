@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 
 const serviceOrderSchema = z.object({
   customer_id: z.string().uuid('Selecione um cliente'),
+  order_type: z.enum(['comercial', 'operacional']).default('comercial'),
   title: z.string().min(3, 'Título muito curto').max(200, 'Título muito longo'),
   description: z.string().optional(),
   requester: z.string().optional(),
@@ -28,6 +29,7 @@ interface ServiceOrderFormProps {
   initialData?: {
     id: string;
     customer_id: string;
+    order_type?: 'comercial' | 'operacional';
     title: string;
     description?: string;
     requester?: string;
@@ -63,6 +65,7 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
     resolver: zodResolver(serviceOrderSchema),
     defaultValues: initialData ? {
       customer_id: initialData.customer_id,
+      order_type: initialData.order_type || 'comercial',
       title: initialData.title,
       description: initialData.description || '',
       requester: initialData.requester || '',
@@ -75,6 +78,7 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
       serial_number: initialData.serial_number || '',
       reported_defect: initialData.reported_defect || '',
     } : {
+      order_type: 'comercial',
       priority: 'normal',
     },
   });
@@ -83,6 +87,7 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
     if (mode === 'edit' && initialData) {
       reset({
         customer_id: initialData.customer_id,
+        order_type: initialData.order_type || 'comercial',
         title: initialData.title,
         description: initialData.description || '',
         requester: initialData.requester || '',
@@ -116,14 +121,29 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
       if (status === 422) {
         const detail = error.response.data?.detail;
         if (Array.isArray(detail)) {
+          // Mapear erros para os campos do formulário
+          const errorMessages: string[] = [];
           detail.forEach((err: any) => {
             const field = err.loc?.[1] as keyof ServiceOrderFormData;
-            if (field) {
-              setError(field, { message: err.msg });
+            const message = err.msg || 'Campo inválido';
+            
+            if (field && field in errors) {
+              setError(field, { message });
             }
+            
+            // Adicionar à lista de erros gerais
+            const fieldLabel = field || err.loc?.join('.');
+            errorMessages.push(`${fieldLabel}: ${message}`);
           });
+          
+          // Exibir lista de erros no topo
+          if (errorMessages.length > 0) {
+            setError('root', { 
+              message: `Erro de validação:\n${errorMessages.join('\n')}` 
+            });
+          }
         } else {
-          setError('root', { message: detail || 'Erro de validação' });
+          setError('root', { message: detail || 'Erro de validação. Verifique os campos obrigatórios.' });
         }
       } else if (status === 403) {
         setError('root', { message: 'Você não tem permissão para realizar esta ação' });
@@ -145,7 +165,8 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {errors.root && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
-          {errors.root.message}
+          <p className="font-semibold mb-2">⚠️ Erro ao salvar:</p>
+          <pre className="text-sm whitespace-pre-wrap">{errors.root.message}</pre>
         </div>
       )}
 
@@ -153,6 +174,9 @@ export function ServiceOrderForm({ mode, initialData, onSuccess, onCancel }: Ser
       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">📋 Dados Básicos</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo de OS (hidden - sempre comercial por padrão) */}
+          <input type="hidden" {...register('order_type')} value="comercial" />
+          
           {/* Cliente */}
           <div>
             <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

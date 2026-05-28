@@ -143,6 +143,9 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
+      console.log('🔍 Carregando OS para edição:', initialData);
+      console.log('🔍 customer_id do backend:', initialData.customer_id);
+      
       setAttachments(initialData.attachments || []);
       reset({
         customer_id: initialData.customer_id || '',
@@ -316,6 +319,9 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
   });
 
   const onSubmit = (data: ServiceOrderFormData) => {
+    console.log('🔍 onSubmit - data completo:', data);
+    console.log('🔍 customer_id no form:', data.customer_id);
+    
     const { installments, items, products, payment_condition, down_payment, total_amount, ...dataWithoutArrays } = data;
     void total_amount;
     const normalizedData = {
@@ -323,6 +329,9 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
       total_km: calculatedKm > 0 ? `${calculatedKm} km` : dataWithoutArrays.total_km,
       total_hours: calculatedHours || dataWithoutArrays.total_hours,
     };
+    
+    console.log('🔍 normalizedData:', normalizedData);
+    console.log('🔍 customer_id no normalizedData:', normalizedData.customer_id);
     
     if (mode === 'create') {
       // No CREATE, enviar com items e products
@@ -358,7 +367,7 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
       
       // Filtrar campos vazios/undefined para não sobrescrever dados existentes
       const filteredData = Object.fromEntries(
-        Object.entries(normalizedData).filter(([_, value]) => {
+        Object.entries(normalizedData).filter(([, value]) => {
           // Manter apenas valores que não são undefined, null ou string vazia
           if (value === undefined || value === null) return false;
           if (typeof value === 'string' && value.trim() === '') return false;
@@ -366,12 +375,15 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
         })
       );
       
+      console.log('🔍 filteredData:', filteredData);
+      console.log('🔍 customer_id no filteredData:', filteredData.customer_id);
+      
       // Determinar se devemos enviar items/products
       // Se há items/products no form E são diferentes dos iniciais, enviar para sincronizar
       const shouldSyncItems = items && items.length > 0;
       const shouldSyncProducts = products && products.length > 0;
       
-      const updatePayload = {
+      const updatePayload: Record<string, any> = {
         ...filteredData,
         // Campos de pagamento (removidos no destructuring mas necessários no update)
         payment_condition,
@@ -379,6 +391,9 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
         installment_count: payment_condition === 'parcelado' ? Math.max(installments?.length || 1, 1) : 1,
         discount_amount: discountAmount,
       };
+      
+      console.log('🔍 PAYLOAD FINAL:', updatePayload);
+      console.log('🔍 customer_id no PAYLOAD FINAL:', updatePayload.customer_id);
       
       // Só enviar totais se estamos sincronizando items/products
       // Caso contrário, deixar o backend recalcular a partir dos existentes
@@ -405,9 +420,11 @@ export function ServiceOrderFormExpanded({ mode, initialData, onSuccess, onCance
       
       updateMutation.mutate({
         id: initialData.id,
-        data: updatePayload,
-        // Enviar installments separadamente se necessário
-        installments: payment_condition === 'parcelado' ? installments : [],
+        data: {
+          ...updatePayload,
+          // Enviar installments como parte do payload
+          installments: payment_condition === 'parcelado' ? installments : [],
+        },
       });
     }
   };

@@ -33,23 +33,24 @@ export interface ServiceOrderAttachment {
   id: string;
   original_filename: string;
   stored_filename: string;
-  file_type: 'image' | 'document' | 'pdf';
+  file_type: 'image' | 'document' | 'pdf' | string;
   mime_type?: string;
   file_size?: number;
+  file_path?: string;
   created_at: string;
 }
 
 export interface ServiceOrder {
   id: string;
   number: string;
-  customer_id: string;
+  customer_id?: string;
   customer_name?: string;
+  user_id: string;
   // Tipo de Ordem de Serviço
-  tipo_ordem: 'atendimento' | 'projeto';
-  exibir_valores: boolean;
-  proposta_id?: string;
-  percentual_concluido: number;
-  etapa_atual?: string;
+  order_type: 'comercial' | 'operacional';
+  service_type?: string;
+  proposal_id?: string;
+  location?: string;
   // Dados básicos
   title: string;
   description?: string;
@@ -57,8 +58,10 @@ export interface ServiceOrder {
   problem_description?: string;
   status: 'pendente' | 'em_execucao' | 'finalizada' | 'cancelada';
   priority: 'baixa' | 'normal' | 'alta' | 'urgente';
-  opening_date: string;
+  opening_date?: string;
   expected_date?: string;
+  scheduled_date?: string;
+  completed_date?: string;
   start_date?: string;
   completion_date?: string;
   technician?: string;
@@ -69,28 +72,39 @@ export interface ServiceOrder {
   technical_diagnosis?: string;
   solution?: string;
   notes?: string;
+  attachments_notes?: string;
   start_time?: string;
   end_time?: string;
   total_hours?: string;
+  morning_entry_time?: string;
+  lunch_exit_time?: string;
+  lunch_return_time?: string;
+  evening_exit_time?: string;
+  overtime_entry_time?: string;
+  overtime_exit_time?: string;
+  regular_hours?: number;
+  overtime_hours?: number;
+  lunch_break_minutes?: number;
   initial_km?: number;
   final_km?: number;
   total_km?: string;
-  service_amount: number;
-  parts_amount: number;
-  discount_amount: number;
-  total_amount: number;
+  service_amount?: number;
+  parts_amount?: number;
+  discount_amount?: number;
+  total_amount?: number;
   warranty_days?: number;
-  payment_condition: 'a_vista' | 'parcelado';
+  payment_condition?: 'a_vista' | 'parcelado';
   installment_count?: number;
   down_payment?: number;
   first_installment_date?: string;
   payment_due_date?: string;
   payment_description?: string;
-  payment_status: 'pendente' | 'parcial' | 'pago' | 'vencido';
-  include_images_in_report: boolean;
+  payment_status?: 'pendente' | 'parcial' | 'pago' | 'vencido';
+  include_images_in_report?: boolean;
   created_at: string;
   updated_at?: string;
   deleted_at?: string;
+  deleted_by?: string;
   items?: ServiceOrderItem[];
   products?: ServiceOrderProduct[];
   installments?: ServiceOrderInstallment[];
@@ -117,12 +131,22 @@ export interface GetServiceOrdersParams {
 
 export interface CreateServiceOrderData {
   customer_id: string;
+  order_type: 'comercial' | 'operacional';
   title: string;
   description?: string;
+  service_type?: string;
+  proposal_id?: string;
+  location?: string;
   requester?: string;
   problem_description?: string;
+  status?: 'pendente' | 'em_execucao' | 'finalizada' | 'cancelada';
   priority?: 'baixa' | 'normal' | 'alta' | 'urgente';
+  opening_date?: string;
   expected_date?: string;
+  scheduled_date?: string;
+  completed_date?: string;
+  start_date?: string;
+  completion_date?: string;
   technician?: string;
   equipment?: string;
   brand_model?: string;
@@ -131,12 +155,26 @@ export interface CreateServiceOrderData {
   technical_diagnosis?: string;
   solution?: string;
   notes?: string;
+  attachments_notes?: string;
   start_time?: string;
   end_time?: string;
   total_hours?: string;
+  morning_entry_time?: string;
+  lunch_exit_time?: string;
+  lunch_return_time?: string;
+  evening_exit_time?: string;
+  overtime_entry_time?: string;
+  overtime_exit_time?: string;
+  regular_hours?: number;
+  overtime_hours?: number;
+  lunch_break_minutes?: number;
   initial_km?: number;
   final_km?: number;
   total_km?: string;
+  service_amount?: number;
+  parts_amount?: number;
+  discount_amount?: number;
+  total_amount?: number;
   warranty_days?: number;
   payment_condition?: 'a_vista' | 'parcelado';
   installment_count?: number;
@@ -144,6 +182,7 @@ export interface CreateServiceOrderData {
   first_installment_date?: string;
   payment_due_date?: string;
   payment_description?: string;
+  payment_status?: 'pendente' | 'parcial' | 'pago' | 'vencido';
   include_images_in_report?: boolean;
   items?: Omit<ServiceOrderItem, 'id'>[];
   products?: Omit<ServiceOrderProduct, 'id'>[];
@@ -151,12 +190,23 @@ export interface CreateServiceOrderData {
 }
 
 export interface UpdateServiceOrderData {
+  customer_id?: string;
+  order_type?: 'comercial' | 'operacional';
+  service_type?: string;
+  proposal_id?: string;
+  location?: string;
   title?: string;
   description?: string;
   requester?: string;
   problem_description?: string;
+  status?: 'pendente' | 'em_execucao' | 'finalizada' | 'cancelada';
   priority?: 'baixa' | 'normal' | 'alta' | 'urgente';
+  opening_date?: string;
   expected_date?: string;
+  scheduled_date?: string;
+  completed_date?: string;
+  start_date?: string;
+  completion_date?: string;
   technician?: string;
   equipment?: string;
   brand_model?: string;
@@ -165,12 +215,26 @@ export interface UpdateServiceOrderData {
   technical_diagnosis?: string;
   solution?: string;
   notes?: string;
+  attachments_notes?: string;
   start_time?: string;
   end_time?: string;
   total_hours?: string;
+  morning_entry_time?: string;
+  lunch_exit_time?: string;
+  lunch_return_time?: string;
+  evening_exit_time?: string;
+  overtime_entry_time?: string;
+  overtime_exit_time?: string;
+  regular_hours?: number;
+  overtime_hours?: number;
+  lunch_break_minutes?: number;
   initial_km?: number;
   final_km?: number;
   total_km?: string;
+  service_amount?: number;
+  parts_amount?: number;
+  discount_amount?: number;
+  total_amount?: number;
   warranty_days?: number;
   payment_condition?: 'a_vista' | 'parcelado';
   installment_count?: number;
@@ -178,7 +242,11 @@ export interface UpdateServiceOrderData {
   first_installment_date?: string;
   payment_due_date?: string;
   payment_description?: string;
+  payment_status?: 'pendente' | 'parcial' | 'pago' | 'vencido';
   include_images_in_report?: boolean;
+  items?: ServiceOrderItem[];
+  products?: ServiceOrderProduct[];
+  installments?: ServiceOrderInstallment[];
 }
 
 export interface ChangeStatusData {
@@ -267,9 +335,37 @@ export const addServiceOrderInstallment = async (serviceOrderId: string, install
   return response.data;
 };
 
+export const updateServiceOrderInstallment = async (installmentId: string, installment: Partial<Omit<ServiceOrderInstallment, 'id'>>): Promise<ServiceOrderInstallment> => {
+  const response = await apiClient.patch<ServiceOrderInstallment>(`/service-orders/installments/${installmentId}`, installment);
+  return response.data;
+};
+
+export const deleteServiceOrderInstallment = async (installmentId: string): Promise<void> => {
+  await apiClient.delete(`/service-orders/installments/${installmentId}`);
+};
+
 export const getServiceOrderInstallments = async (serviceOrderId: string): Promise<ServiceOrderInstallment[]> => {
   const response = await apiClient.get<ServiceOrderInstallment[]>(`/service-orders/${serviceOrderId}/installments`);
   return response.data;
+};
+
+// ==================== ATTACHMENTS ====================
+
+export const addServiceOrderAttachment = async (
+  serviceOrderId: string,
+  attachment: Omit<ServiceOrderAttachment, 'id' | 'created_at'>
+): Promise<ServiceOrderAttachment> => {
+  const response = await apiClient.post<ServiceOrderAttachment>(`/service-orders/${serviceOrderId}/attachments`, attachment);
+  return response.data;
+};
+
+export const getServiceOrderAttachments = async (serviceOrderId: string): Promise<ServiceOrderAttachment[]> => {
+  const response = await apiClient.get<ServiceOrderAttachment[]>(`/service-orders/${serviceOrderId}/attachments`);
+  return response.data;
+};
+
+export const deleteServiceOrderAttachment = async (attachmentId: string): Promise<void> => {
+  await apiClient.delete(`/service-orders/attachments/${attachmentId}`);
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -316,24 +412,24 @@ export const getPriorityColor = (priority: string): string => {
 
 export const getTipoOrdemLabel = (tipo: string): string => {
   const labels: Record<string, string> = {
-    atendimento: 'Atendimento',
-    projeto: 'Projeto',
+    comercial: 'Comercial',
+    operacional: 'Operacional',
   };
   return labels[tipo] || tipo;
 };
 
 export const getTipoOrdemColor = (tipo: string): string => {
   const colors: Record<string, string> = {
-    atendimento: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-    projeto: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
+    comercial: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+    operacional: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
   };
   return colors[tipo] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 };
 
 export const getTipoOrdemIcon = (tipo: string): string => {
   const icons: Record<string, string> = {
-    atendimento: '🚨',  // Emergencial/Chamado
-    projeto: '📋',      // Projeto/Acompanhamento
+    comercial: '🚨',
+    operacional: '📋',
   };
   return icons[tipo] || '📄';
 };
