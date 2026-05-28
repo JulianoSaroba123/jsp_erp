@@ -3,9 +3,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCustomer, patchCustomer } from '../../api/customers';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getCompanyByCnpj, getAddressByCep } from '../../api/external';
-import { onlyDigits, isCNPJ, maskCnpjCpf, maskCep, maskPhone } from '../../lib/brasil';
+import { onlyDigits, isCNPJ, isValidCNPJ, isValidCep, maskCnpjCpf, maskCep, maskPhone } from '../../lib/brasil';
 
 const customerSchema = z.object({
   person_type: z.enum(['PF', 'PJ']).default('PF'),
@@ -50,8 +50,14 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
   // Estados para automações
   const [isFetchingCnpj, setIsFetchingCnpj] = useState(false);
   const [cnpjError, setCnpjError] = useState<string | null>(null);
+  const [cnpjSuccess, setCnpjSuccess] = useState<string | null>(null);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
+  const [cepSuccess, setCepSuccess] = useState<string | null>(null);
+  
+  // Refs para AbortController (cancelar requisições pendentes)
+  const cnpjAbortRef = useRef<AbortController | null>(null);
+  const cepAbortRef = useRef<AbortController | null>(null);
 
   const {
     register,
@@ -61,7 +67,6 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
     setError,
     setValue,
     watch,
-    getValues,
   } = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -100,124 +105,289 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
     }
   }, [mode, initialData, reset]);
 
-  // Automação: Buscar CNPJ (com debounce)
+  // ═══════════════════════════════════════════════════════════
+  // 🔍 AUTOMAÇÃO PROFISSIONAL: BUSCA POR CNPJ
+  // ═══════════════════════════════════════════════════════════
+  
   useEffect(() => {
+    // Reset estados
+    setCnpjError(null);
+    setCnpjSuccess(null);
+    
+    // Validações iniciais
     if (!cpfCnpj || personType !== 'PJ') {
-      setCnpjError(null);
       return;
     }
 
     const digits = onlyDigits(cpfCnpj);
-    if (!isCNPJ(cpfCnpj)) {
-      setCnpjError(null);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      await fetchCnpjData(digits);
-    }, 600);
-
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cpfCnpj, personType]);
-
-  // Automação: Buscar CEP (com debounce)
-  useEffect(() => {
-    if (!cep) {
-      setCepError(null);
-      return;
-    }
-
-    const digits = onlyDigits(cep);
     
-    // Só buscar se tiver 8 dígitos
-    if (digits.length !== 8) {
-      setCepError(null);
+    // Verificar se tem 14 dígitos
+    if (digits.length !== 14) {
       return;
+    }
+    
+    // Validação real do CNPJ (dígitos verificadores)
+    if (!isValidCNPJ(cpfCnpj)) {
+      setCnpjError('CNPJ inválido');
+      return;
+    }
+
+    // Cancelar requisição anterior se existir
+    if (cnpjAbortRef.current) {
+      cnpjAbortRef.current.abort();
     }
 
     // Debounce de 600ms
     const timer = setTimeout(async () => {
-      await fetchCepData(digits);
+      await fetchCnpjData(digits);
     }, 600);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (cnpjAbortRef.current) {
+        cnpjAbortRef.current.abort();
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cep]);
+  }, [cpfCnpj, personType]);
 
   const fetchCnpjData = async (cnpj: string) => {
+    // Criar novo AbortController
+    const abortController = new AbortController();
+    cnpjAbortRef.current = abortController;
+    
     setIsFetchingCnpj(true);
     setCnpjError(null);
+    setCnpjSuccess(null);
 
     try {
       const data = await getCompanyByCnpj(cnpj);
-      const currentValues = getValues();
       
-      if (!currentValues.name) setValue('name', data.nome_fantasia || data.razao_social || '', { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.trade_name) setValue('trade_name', data.nome_fantasia || '', { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.email && data.email) setValue('email', data.email, { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.phone && data.ddd_telefone_1) setValue('phone', onlyDigits(data.ddd_telefone_1), { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.cep && data.cep) {
-        const cleanCep = onlyDigits(data.cep);
-        setValue('cep', cleanCep, { shouldValidate: true, shouldDirty: false });
-        if (cleanCep.length === 8) setTimeout(() => fetchCepData(cleanCep), 300);
+      // Verificar se foi cancelado
+      if (abortController.signal.aborted) return;
+      
+      // ═══ PREENCHIMENTO AUTOMÁTICO ═══
+      let camposPreenchidos = 0;
+      
+      // Nome/Razão Social (prioritário)
+      if (data.razao_social) {
+        setValue('name', data.razao_social, { shouldValidate: false, shouldDirty: true });
+        setValue('trade_name', data.razao_social, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 2;
+      } else if (data.nome_fantasia) {
+        setValue('name', data.nome_fantasia, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
       }
-      if (!currentValues.street && data.logradouro) setValue('street', data.logradouro, { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.number && data.numero) setValue('number', data.numero, { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.neighborhood && data.bairro) setValue('neighborhood', data.bairro, { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.city && data.municipio) setValue('city', data.municipio, { shouldValidate: true, shouldDirty: false });
-      if (!currentValues.state && data.uf) setValue('state', data.uf, { shouldValidate: true, shouldDirty: false });
+      
+      // Email
+      if (data.email) {
+        setValue('email', data.email, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      
+      // Telefones
+      if (data.ddd_telefone_1) {
+        setValue('phone', onlyDigits(data.ddd_telefone_1), { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.ddd_telefone_2) {
+        setValue('phone2', onlyDigits(data.ddd_telefone_2), { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      
+      // Endereço
+      if (data.cep) {
+        const cleanCep = onlyDigits(data.cep);
+        setValue('cep', cleanCep, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+        
+        // Buscar endereço completo via ViaCEP (não esperar)
+        if (cleanCep.length === 8) {
+          setTimeout(() => fetchCepData(cleanCep), 400);
+        }
+      }
+      if (data.logradouro) {
+        setValue('street', data.logradouro, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.numero) {
+        setValue('number', data.numero, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.complemento) {
+        setValue('address_complement', data.complemento, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.bairro) {
+        setValue('neighborhood', data.bairro, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.municipio) {
+        setValue('city', data.municipio, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.uf) {
+        setValue('state', data.uf, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      
+      // Mensagem de sucesso
+      setCnpjSuccess(`✓ Dados carregados: ${data.razao_social || data.nome_fantasia} (${camposPreenchidos} campos preenchidos)`);
+      
+      // Limpar sucesso após 5 segundos
+      setTimeout(() => setCnpjSuccess(null), 5000);
+      
     } catch (error: any) {
-      setCnpjError(error.message || 'Erro ao consultar CNPJ');
+      // Não mostrar erro se foi cancelado
+      if (abortController.signal.aborted) return;
+      
+      // Erro específico
+      if (error.message?.includes('não encontrado') || error.message?.includes('indisponível')) {
+        setCnpjError('Busca automática indisponível. Você pode preencher manualmente.');
+      } else if (error.message?.includes('Timeout') || error.message?.includes('timeout')) {
+        setCnpjError('Timeout na busca automática. Você pode preencher manualmente.');
+      } else {
+        setCnpjError('Busca automática falhou. Você pode preencher manualmente.');
+      }
     } finally {
       setIsFetchingCnpj(false);
     }
   };
 
-  // Função para buscar dados do CEP
+  // ═══════════════════════════════════════════════════════════
+  // 🔍 AUTOMAÇÃO PROFISSIONAL: BUSCA POR CEP
+  // ═══════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    // Reset estados
+    setCepError(null);
+    setCepSuccess(null);
+    
+    if (!cep) {
+      return;
+    }
+
+    const digits = onlyDigits(cep);
+    
+    // Verificar se tem 8 dígitos
+    if (digits.length !== 8) {
+      return;
+    }
+    
+    // Validar CEP
+    if (!isValidCep(cep)) {
+      setCepError('CEP inválido');
+      return;
+    }
+
+    // Cancelar requisição anterior se existir
+    if (cepAbortRef.current) {
+      cepAbortRef.current.abort();
+    }
+
+    // Debounce de 500ms (mais rápido que CNPJ)
+    const timer = setTimeout(async () => {
+      await fetchCepData(digits);
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      if (cepAbortRef.current) {
+        cepAbortRef.current.abort();
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cep]);
+
   const fetchCepData = async (cep: string) => {
+    // Criar novo AbortController
+    const abortController = new AbortController();
+    cepAbortRef.current = abortController;
+    
     setIsFetchingCep(true);
     setCepError(null);
+    setCepSuccess(null);
 
     try {
       const data = await getAddressByCep(cep);
       
-      // Preencher apenas campos vazios
-      const currentValues = getValues();
+      // Verificar se foi cancelado
+      if (abortController.signal.aborted) return;
       
-      if (!currentValues.street && data.logradouro) {
-        setValue('street', data.logradouro, { shouldValidate: true, shouldDirty: false });
+      // ═══ PREENCHIMENTO AUTOMÁTICO ═══
+      let camposPreenchidos = 0;
+      
+      if (data.logradouro) {
+        setValue('street', data.logradouro, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.bairro) {
+        setValue('neighborhood', data.bairro, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.localidade) {
+        setValue('city', data.localidade, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
+      }
+      if (data.uf) {
+        setValue('state', data.uf, { shouldValidate: false, shouldDirty: true });
+        camposPreenchidos += 1;
       }
       
-      if (!currentValues.neighborhood && data.bairro) {
-        setValue('neighborhood', data.bairro, { shouldValidate: true, shouldDirty: false });
+      // Mensagem de sucesso
+      if (camposPreenchidos > 0) {
+        setCepSuccess(`✓ Endereço carregado: ${data.logradouro}, ${data.bairro} - ${data.localidade}/${data.uf}`);
+        
+        // Limpar sucesso após 4 segundos
+        setTimeout(() => setCepSuccess(null), 4000);
       }
       
-      if (!currentValues.city && data.localidade) {
-        setValue('city', data.localidade, { shouldValidate: true, shouldDirty: false });
-      }
-      
-      if (!currentValues.state && data.uf) {
-        setValue('state', data.uf, { shouldValidate: true, shouldDirty: false });
-      }
     } catch (error: any) {
-      setCepError(error.message || 'Erro ao consultar CEP');
+      // Não mostrar erro se foi cancelado
+      if (abortController.signal.aborted) return;
+      
+      // Erro específico
+      if (error.message?.includes('não encontrado')) {
+        setCepError('CEP não encontrado');
+      } else if (error.message?.includes('Timeout')) {
+        setCepError('Tempo esgotado. Tente novamente');
+      } else {
+        setCepError('Erro ao consultar CEP. Verifique sua conexão');
+      }
     } finally {
       setIsFetchingCep(false);
     }
   };
 
+  // ═══════════════════════════════════════════════════════════
+  // 🎯 HANDLERS DE BLUR (BACKUP MANUAL)
+  // ═══════════════════════════════════════════════════════════
+
   const handleCnpjBlur = () => {
-    if (personType === 'PJ' && isCNPJ(cpfCnpj)) {
-      fetchCnpjData(onlyDigits(cpfCnpj || ''));
+    console.log('👆 handleCnpjBlur disparado - personType:', personType, 'cpfCnpj:', cpfCnpj);
+    const isValid = isCNPJ(cpfCnpj);
+    console.log('✅ CNPJ válido?', isValid);
+    
+    if (personType === 'PJ' && isValid) {
+      const digits = onlyDigits(cpfCnpj || '');
+      console.log('🔢 CNPJ dígitos:', digits);
+      console.log('✅ Chamando fetchCnpjData');
+      fetchCnpjData(digits);
+    } else {
+      console.log('❌ Não chamou fetchCnpjData - personType não é PJ ou CNPJ inválido');
     }
   };
 
   // Handler onBlur para CEP (dispara busca imediatamente)
   const handleCepBlur = () => {
+    console.log('👆 handleCepBlur disparado, CEP atual:', cep);
     const digits = onlyDigits(cep || '');
+    console.log('🔢 Dígitos do CEP:', digits, 'length:', digits.length);
     if (digits.length === 8) {
+      console.log('✅ CEP válido (8 dígitos), chamando fetchCepData');
       fetchCepData(digits);
+    } else {
+      console.log('❌ CEP inválido, não tem 8 dígitos');
     }
   };
 
@@ -372,9 +542,12 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
                 <input
                   id="cpf_cnpj"
                   type="text"
-                  {...register('cpf_cnpj')}
+                  value={maskCnpjCpf(cpfCnpj || '')}
                   onBlur={handleCnpjBlur}
-                  onChange={(e) => setValue('cpf_cnpj', maskCnpjCpf(e.target.value), { shouldValidate: true })}
+                  onChange={(e) => {
+                    const cleaned = onlyDigits(e.target.value);
+                    setValue('cpf_cnpj', cleaned, { shouldValidate: true, shouldDirty: true });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder={personType === 'PJ' ? '12.345.678/0001-00' : '123.456.789-00'}
                 />
@@ -385,10 +558,8 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
                 )}
               </div>
               {errors.cpf_cnpj && <p className="mt-1 text-sm text-red-600">{errors.cpf_cnpj.message}</p>}
-              {cnpjError && !errors.cpf_cnpj && <p className="mt-1 text-sm text-amber-600">{cnpjError}</p>}
-              {personType === 'PJ' && isCNPJ(cpfCnpj) && !isFetchingCnpj && !cnpjError && (
-                <p className="mt-1 text-sm text-gray-500">💡 Preenchimento automático por CNPJ ativado</p>
-              )}
+              {cnpjError && !errors.cpf_cnpj && <p className="mt-1 text-sm text-blue-600">ℹ️ {cnpjError}</p>}
+              {cnpjSuccess && !errors.cpf_cnpj && <p className="mt-1 text-sm text-green-600 font-medium">{cnpjSuccess}</p>}
             </div>
 
             {/* Inscrição Estadual (só PJ) */}
@@ -471,9 +642,12 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
                 <input
                   id="cep"
                   type="text"
-                  {...register('cep')}
+                  value={maskCep(cep || '')}
                   onBlur={handleCepBlur}
-                  onChange={(e) => setValue('cep', maskCep(e.target.value), { shouldValidate: true })}
+                  onChange={(e) => {
+                    const cleaned = onlyDigits(e.target.value);
+                    setValue('cep', cleaned, { shouldValidate: true, shouldDirty: true });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="12345-678"
                 />
@@ -484,10 +658,8 @@ export function CustomerForm({ mode, initialData, onSuccess, onCancel }: Custome
                 )}
               </div>
               {errors.cep && <p className="mt-1 text-sm text-red-600">{errors.cep.message}</p>}
-              {cepError && !errors.cep && <p className="mt-1 text-sm text-amber-600">{cepError}</p>}
-              {onlyDigits(cep || '').length === 8 && !isFetchingCep && !cepError && (
-                <p className="mt-1 text-sm text-gray-500">💡 Preenchimento automático por CEP ativado</p>
-              )}
+              {cepError && !errors.cep && <p className="mt-1 text-sm text-red-600">{cepError}</p>}
+              {cepSuccess && !errors.cep && <p className="mt-1 text-sm text-green-600 font-medium">{cepSuccess}</p>}
             </div>
 
             {/* Logradouro */}

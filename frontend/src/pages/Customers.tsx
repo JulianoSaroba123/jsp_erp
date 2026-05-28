@@ -60,6 +60,26 @@ export function Customers() {
     setFormMode('create');
   };
 
+  const editingCustomerFormData = editingCustomer
+    ? {
+        ...editingCustomer,
+        trade_name: editingCustomer.trade_name ?? undefined,
+        cpf_cnpj: editingCustomer.cpf_cnpj ?? undefined,
+        state_registration: editingCustomer.state_registration ?? undefined,
+        email: editingCustomer.email ?? undefined,
+        phone: editingCustomer.phone ?? undefined,
+        phone2: editingCustomer.phone2 ?? undefined,
+        cep: editingCustomer.cep ?? undefined,
+        street: editingCustomer.street ?? undefined,
+        number: editingCustomer.number ?? undefined,
+        address_complement: editingCustomer.address_complement ?? undefined,
+        neighborhood: editingCustomer.neighborhood ?? undefined,
+        city: editingCustomer.city ?? undefined,
+        state: editingCustomer.state ?? undefined,
+        notes: editingCustomer.notes ?? undefined,
+      }
+    : undefined;
+
   if (isLoading) {
     return <LoadingState description="Carregando clientes..." />;
   }
@@ -97,7 +117,7 @@ export function Customers() {
           </h2>
           <CustomerForm 
             mode={formMode}
-            initialData={editingCustomer || undefined}
+            initialData={editingCustomerFormData}
             onSuccess={handleCloseForm} 
             onCancel={handleCloseForm}
           />
