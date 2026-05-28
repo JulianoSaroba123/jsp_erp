@@ -345,7 +345,11 @@ export function CompanySettingsForm({ settings, onSave, isSaving, canEdit }: Com
             )}
           </div>
           {errors.cnpj && <p className="mt-1 text-sm text-red-600">{errors.cnpj.message}</p>}
-          {cnpjError && !errors.cnpj && <p className="mt-1 text-sm text-amber-600">{cnpjError}</p>}
+          {cnpjError && !errors.cnpj && (
+            <p className="mt-1 text-sm text-blue-600">
+              ℹ️ {cnpjError}
+            </p>
+          )}
           {onlyDigits(cnpj || '').length === 14 && !isFetchingCnpj && !cnpjError && (
             <p className="mt-1 text-sm text-gray-500">💡 Preenchimento automático ativado</p>
           )}

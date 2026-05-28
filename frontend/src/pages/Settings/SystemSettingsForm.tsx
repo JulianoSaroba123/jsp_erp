@@ -26,7 +26,6 @@ export function SystemSettingsForm({ settings, onSave, isSaving, canEdit }: Syst
     register,
     handleSubmit,
     formState: { errors },
-    watch,
     setValue,
   } = useForm<SystemFormData>({
     resolver: zodResolver(systemSchema),
