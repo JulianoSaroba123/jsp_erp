@@ -93,9 +93,25 @@ class Proposal(Base):
     service_orders = relationship(
         "ServiceOrder",
         back_populates="proposal",
-        foreign_keys="ServiceOrder.proposta_id",
+        foreign_keys="ServiceOrder.proposal_id",
         lazy="select"
     )  # Uma proposta pode gerar uma ou mais OS
+    
+    # Relacionamentos para itens e produtos
+    items = relationship(
+        "ProposalItem",
+        foreign_keys="ProposalItem.proposal_id",
+        lazy="select",
+        cascade="all, delete-orphan",
+        back_populates="proposal"
+    )
+    products = relationship(
+        "ProposalProduct",
+        foreign_keys="ProposalProduct.proposal_id",
+        lazy="select",
+        cascade="all, delete-orphan",
+        back_populates="proposal"
+    )
 
     def __repr__(self):
         return f"<Proposal(id={self.id}, number={self.number}, status={self.status}, total={self.total_amount})>"
@@ -128,7 +144,7 @@ class ProposalItem(Base):
     created_at = Column(TIMESTAMP, server_default=text("now()"))
 
     # Relacionamento
-    proposal = relationship("Proposal", foreign_keys=[proposal_id], lazy="select")
+    proposal = relationship("Proposal", foreign_keys=[proposal_id], lazy="select", back_populates="items")
 
 
 class ProposalProduct(Base):
@@ -162,5 +178,5 @@ class ProposalProduct(Base):
     created_at = Column(TIMESTAMP, server_default=text("now()"))
 
     # Relacionamentos
-    proposal = relationship("Proposal", foreign_keys=[proposal_id], lazy="select")
+    proposal = relationship("Proposal", foreign_keys=[proposal_id], lazy="select", back_populates="products")
     product = relationship("Product", foreign_keys=[product_id], lazy="select")
