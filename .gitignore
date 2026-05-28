@@ -26,6 +26,14 @@ venv/
 ENV/
 env/
 
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/node_modules/.vite/
+dist/
+frontend/dist/
+frontend/.vite/
+
 # Environment variables
 .env
 .env.test
@@ -46,6 +54,7 @@ htmlcov/
 *.cover
 .hypothesis/
 .tox/
+coverage/
 
 # Database
 *.db
@@ -54,6 +63,17 @@ htmlcov/
 
 # Logs
 *.log
+*.tmp
+
+# Local transient artifacts (safe specific patterns)
+backend/test_*.txt
+backend/final_*.txt
+backend/results*.txt
+backend/grant_*.txt
+backend/rbac_*.txt
+backend/error_*.txt
+backend/proposta_teste.pdf
+backend/test_settings.html
 
 # OS
 Thumbs.db
