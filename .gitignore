@@ -66,6 +66,12 @@ coverage/
 *.tmp
 
 # Local transient artifacts (safe specific patterns)
+.pytest_root_output.txt
+.pytest_root_output_new.txt
+results*.txt
+final*.txt
+backend/complete_results.txt
+backend/customer_final.txt
 backend/test_*.txt
 backend/final_*.txt
 backend/results*.txt
