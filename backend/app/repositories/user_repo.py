@@ -2,12 +2,11 @@
 Repository para User - acesso a dados (queries)
 Camada de abstração do banco de dados
 """
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional, List
 
 from app.models.user import User
-from app.models.role import Role
 
 
 class UserRepository:
@@ -17,12 +16,9 @@ class UserRepository:
         self.db = db
     
     def get_by_id(self, user_id: UUID) -> Optional[User]:
-        """Busca usuário por ID com roles e permissions carregadas (eager loading)"""
+        """Busca usuário por ID"""
         return (
             self.db.query(User)
-            .options(
-                joinedload(User.roles).joinedload(Role.permissions)
-            )
             .filter(User.id == user_id)
             .first()
         )
