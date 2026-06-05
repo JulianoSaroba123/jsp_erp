@@ -350,6 +350,99 @@ class TestUpdateFinancialEntryStatus:
         
         assert response.status_code == 401
 
+    def test_update_status_success_pending_to_paid(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve permitir transição pending -> paid no endpoint dedicado."""
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="revenue",
+            amount=100.0,
+            description="Receita pendente",
+            status="pending",
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        client.headers.update(auth_headers_user)
+        response = client.patch(
+            f"/financial/entries/{entry.id}/status",
+            json={"status": "paid"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paid"
+        assert data["payment_date"] is not None
+
+    def test_update_status_invalid_transition_paid_to_pending_returns_400(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Deve bloquear transição inválida paid -> pending."""
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="revenue",
+            amount=120.0,
+            description="Receita já paga",
+            status="paid",
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        client.headers.update(auth_headers_user)
+        response = client.patch(
+            f"/financial/entries/{entry.id}/status",
+            json={"status": "pending"}
+        )
+
+        assert response.status_code == 400
+        assert "Transição inválida" in response.json()["detail"]
+
+
+class TestUpdateFinancialEntryGeneric:
+    """Testes para PATCH /financial/entries/{entry_id}."""
+
+    def test_generic_patch_cannot_change_status_directly(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """PATCH genérico deve bloquear alteração direta de status."""
+        entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="expense",
+            amount=80.0,
+            description="Despesa pendente",
+            status="pending",
+            occurred_at=datetime.utcnow()
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        client.headers.update(auth_headers_user)
+        response = client.patch(
+            f"/financial/entries/{entry.id}",
+            json={"status": "paid"}
+        )
+
+        assert response.status_code == 400
+        assert "/status" in response.json()["detail"]
+
 
 class TestDeleteFinancialEntry:
     """Testes para DELETE /financial/entries/{entry_id}"""
@@ -402,6 +495,11 @@ class TestDeleteFinancialEntry:
         
         # 204 No Content
         assert response.status_code == 204
+
+        # Soft delete: registro permanece, mas marcado como deletado
+        db_session.refresh(entry)
+        assert entry.deleted_at is not None
+        assert entry.deleted_by == seed_user_normal.id
     
     def test_delete_entry_conflict_paid(
         self,
@@ -465,6 +563,45 @@ class TestDeleteFinancialEntry:
         
         # 404 (anti-enumeration)
         assert response.status_code == 404
+
+    def test_soft_deleted_entry_not_listed_in_default_list(
+        self,
+        client: TestClient,
+        seed_user_normal: User,
+        auth_headers_user: dict,
+        db_session: Session
+    ):
+        """Lançamento com deleted_at preenchido não deve aparecer na listagem padrão."""
+        active_entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="expense",
+            amount=30.0,
+            description="Despesa ativa",
+            status="pending",
+            occurred_at=datetime.utcnow()
+        )
+        deleted_entry = FinancialEntry(
+            user_id=seed_user_normal.id,
+            kind="expense",
+            amount=40.0,
+            description="Despesa deletada",
+            status="pending",
+            occurred_at=datetime.utcnow(),
+            deleted_at=datetime.utcnow(),
+            deleted_by=seed_user_normal.id
+        )
+        db_session.add_all([active_entry, deleted_entry])
+        db_session.commit()
+
+        client.headers.update(auth_headers_user)
+        response = client.get("/financial/entries")
+
+        assert response.status_code == 200
+        data = response.json()
+        descriptions = [item["description"] for item in data["items"]]
+
+        assert "Despesa ativa" in descriptions
+        assert "Despesa deletada" not in descriptions
 
 
 class TestFinancialRoutesEdgeCases:
@@ -620,3 +757,24 @@ class TestFinancialRoutesEdgeCases:
         
         # Validação Pydantic/Literal ou ValueError -> 400/422
         assert response.status_code in [400, 422]
+
+    def test_create_entry_origin_is_normalized_to_manual(
+        self,
+        client: TestClient,
+        auth_headers_user: dict
+    ):
+        """Origin deve ser persistido em padrão único MANUAL."""
+        client.headers.update(auth_headers_user)
+
+        payload = {
+            "kind": "expense",
+            "amount": 99.9,
+            "description": "Teste origem",
+            "origin": "manual"
+        }
+
+        response = client.post("/financial/entries", json=payload)
+        assert response.status_code == 201
+
+        data = response.json()
+        assert data["origin"] == "MANUAL"
