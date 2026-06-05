@@ -22,7 +22,9 @@ from app.middleware.logging import LoggingMiddleware
 from app.exceptions.handlers import register_exception_handlers
 
 # Routers
-from app.routers import health_routes, user_routes, order_routes, financial_routes, report_routes, audit_log_routes, customer_routes, product_routes, supplier_router, service_order_routes, proposal_routes, settings_routes
+from app.routers import health_routes, user_routes, order_routes, financial_routes, report_routes, audit_log_routes, customer_routes, product_routes, supplier_router, service_order_routes, proposal_routes
+# TODO: Reativar Settings após alinhar schema core/public, migration e testes
+# from app.routers import settings_routes
 from app.auth import router as auth_router
 
 
@@ -109,7 +111,8 @@ register_exception_handlers(app)
 # ========================================
 app.include_router(health_routes.router)
 app.include_router(auth_router)  # Autenticação (register, login, me)
-app.include_router(settings_routes.router)  # ETAPA 6: Configurações
+# TODO: Reativar Settings após alinhar schema core/public, migration e testes
+# app.include_router(settings_routes.router)  # ETAPA 6: Configurações
 app.include_router(user_routes.router)
 app.include_router(order_routes.router)
 app.include_router(financial_routes.router)  # ETAPA 3A: Financeiro
