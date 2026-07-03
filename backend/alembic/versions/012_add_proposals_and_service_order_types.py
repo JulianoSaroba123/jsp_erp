@@ -3,7 +3,7 @@
 Create proposals tables and add tipo_ordem fields to service_orders
 
 Revision ID: 012_add_proposals_and_service_order_types
-Revises: 011_create_service_orders
+Revises: 011a_expand_alembic_version_num
 Create Date: 2026-03-11 10:00:00
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = '012_add_proposals_and_service_order_types'
-down_revision = '011_create_service_orders'
+down_revision = '011a_expand_alembic_version_num'
 branch_labels = None
 depends_on = None
 
