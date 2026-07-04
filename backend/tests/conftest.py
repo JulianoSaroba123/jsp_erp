@@ -202,7 +202,11 @@ def seed_user_admin(db_session: Session) -> User:
         user.roles.append(admin_role)
     
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -239,7 +243,11 @@ def seed_user_normal(db_session: Session) -> User:
         user.roles.append(user_role)
     
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -274,10 +282,13 @@ def seed_user_other(db_session: Session) -> User:
     user_role = db_session.query(Role).filter_by(name="user").first()
     if user_role:
         user.roles.append(user_role)
-    
-    db_session.add(user)
+
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -357,7 +368,11 @@ def seed_user_with_delete_permission(db_session: Session) -> User:
         user.roles.append(deleter_role)
     
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -442,6 +457,11 @@ def sample_financial_entry(db_session: Session, seed_user_normal: User) -> Finan
         kind="revenue",
         status="pending",
         amount=50.00,
+        original_amount=50.00,
+        interest=0,
+        discount=0,
+        penalty=0,
+        origin="manual",
         description="Test Revenue",
         occurred_at=datetime.utcnow()
     )

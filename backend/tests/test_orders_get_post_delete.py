@@ -17,6 +17,22 @@ from app.models.order import Order
 from app.models.financial_entry import FinancialEntry
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    payload = dict(overrides)
+    amount = payload.get("amount", 0)
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+    return FinancialEntry(**payload)
+
+
 @pytest.mark.integration
 def test_create_order_with_zero_total_no_financial(
     client: TestClient,
@@ -177,7 +193,7 @@ def test_delete_order_with_pending_financial_succeeds(
     db_session.commit()
     db_session.refresh(order)
     
-    financial = FinancialEntry(
+    financial = build_financial_entry(
         order_id=order.id,
         user_id=seed_user_with_delete_permission.id,
         kind="revenue",
@@ -214,7 +230,7 @@ def test_delete_order_with_paid_financial_blocked(
     db_session.commit()
     db_session.refresh(order)
     
-    financial = FinancialEntry(
+    financial = build_financial_entry(
         order_id=order.id,
         user_id=seed_user_with_delete_permission.id,
         kind="revenue",

@@ -266,7 +266,12 @@ class FinancialService:
             status='pending',  # Aguardando pagamento
             amount=Decimal(str(amount)),
             description=description,
-            occurred_at=datetime.utcnow()
+            occurred_at=datetime.utcnow(),
+            original_amount=Decimal(str(amount)),
+            interest=0,
+            discount=0,
+            penalty=0,
+            origin='ORDER',
         )
 
         try:

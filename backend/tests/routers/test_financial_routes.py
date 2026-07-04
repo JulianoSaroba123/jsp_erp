@@ -1,8 +1,8 @@
-"""
+﻿"""
 Testes para app/routers/financial_routes.py
 
 Coverage target: 80-85%
-Testa autenticação, multi-tenant, filtros, paginação
+Testa autenticaÃ§Ã£o, multi-tenant, filtros, paginaÃ§Ã£o
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +12,24 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.financial_entry import FinancialEntry
+
+
+def build_financial_entry(**kwargs) -> FinancialEntry:
+    payload = dict(kwargs)
+    amount = payload.get("amount")
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+
+    entry_factory = FinancialEntry
+    return entry_factory(**payload)
 
 
 class TestListFinancialEntries:
@@ -29,7 +47,7 @@ class TestListFinancialEntries:
         seed_user_normal: User,
         auth_headers_user: dict
     ):
-        """Usuário sem lançamentos deve receber lista vazia"""
+        """UsuÃ¡rio sem lanÃ§amentos deve receber lista vazia"""
         client.headers.update(auth_headers_user)
         response = client.get("/financial/entries")
         
@@ -47,25 +65,35 @@ class TestListFinancialEntries:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """User normal deve ver apenas seus próprios lançamentos"""
-        # Criar lançamento para user_normal
-        entry_own = FinancialEntry(
+        """User normal deve ver apenas seus prÃ³prios lanÃ§amentos"""
+        # Criar lanÃ§amento para user_normal
+        entry_own = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Revenue Own",
             amount=100.0,
+            original_amount=100.0,
+            interest=0,
+            discount=0,
+            penalty=0,
             kind="revenue",
             status="pending",
+            origin="manual",
             occurred_at=datetime.now()
         )
         db_session.add(entry_own)
         
-        # Criar lançamento para outro usuário
-        entry_other = FinancialEntry(
+        # Criar lanÃ§amento para outro usuÃ¡rio
+        entry_other = build_financial_entry(
             user_id=seed_user_other.id,
             description="Revenue Other",
             amount=200.0,
+            original_amount=200.0,
+            interest=0,
+            discount=0,
+            penalty=0,
             kind="revenue",
             status="pending",
+            origin="manual",
             occurred_at=datetime.now()
         )
         db_session.add(entry_other)
@@ -77,7 +105,7 @@ class TestListFinancialEntries:
         assert response.status_code == 200
         data = response.json()
         
-        # Deve ver apenas 1 lançamento (o próprio)
+        # Deve ver apenas 1 lanÃ§amento (o prÃ³prio)
         assert data["total"] == 1
         assert len(data["items"]) == 1
         assert data["items"][0]["description"] == "Revenue Own"
@@ -91,9 +119,9 @@ class TestListFinancialEntries:
         auth_headers_admin: dict,
         db_session: Session
     ):
-        """Admin deve ver todos os lançamentos"""
-        # Criar lançamentos de diferentes usuários
-        entry1 = FinancialEntry(
+        """Admin deve ver todos os lanÃ§amentos"""
+        # Criar lanÃ§amentos de diferentes usuÃ¡rios
+        entry1 = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Entry 1",
             amount=100,
@@ -101,7 +129,7 @@ class TestListFinancialEntries:
             status="pending",
             occurred_at=datetime.now()
         )
-        entry2 = FinancialEntry(
+        entry2 = build_financial_entry(
             user_id=seed_user_other.id,
             description="Entry 2",
             amount=200,
@@ -109,7 +137,7 @@ class TestListFinancialEntries:
             status="paid",
             occurred_at=datetime.now()
         )
-        entry3 = FinancialEntry(
+        entry3 = build_financial_entry(
             user_id=seed_user_admin.id,
             description="Entry 3",
             amount=300,
@@ -127,7 +155,7 @@ class TestListFinancialEntries:
         assert response.status_code == 200
         data = response.json()
         
-        # Admin vê todos os 3 lançamentos
+        # Admin vÃª todos os 3 lanÃ§amentos
         assert data["total"] == 3
         assert len(data["items"]) == 3
     
@@ -139,8 +167,8 @@ class TestListFinancialEntries:
         db_session: Session
     ):
         """Deve filtrar por status"""
-        # Criar lançamentos com diferentes status
-        entry_pending = FinancialEntry(
+        # Criar lanÃ§amentos com diferentes status
+        entry_pending = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Pending",
             amount=100,
@@ -148,7 +176,7 @@ class TestListFinancialEntries:
             status="pending",
             occurred_at=datetime.now()
         )
-        entry_paid = FinancialEntry(
+        entry_paid = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Paid",
             amount=200,
@@ -178,7 +206,7 @@ class TestListFinancialEntries:
         db_session: Session
     ):
         """Deve filtrar por kind (revenue/expense)"""
-        entry_revenue = FinancialEntry(
+        entry_revenue = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Revenue",
             amount=100,
@@ -186,7 +214,7 @@ class TestListFinancialEntries:
             status="pending",
             occurred_at=datetime.now()
         )
-        entry_expense = FinancialEntry(
+        entry_expense = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Expense",
             amount=50,
@@ -214,10 +242,10 @@ class TestListFinancialEntries:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Deve respeitar paginação"""
-        # Criar 5 lançamentos
+        """Deve respeitar paginaÃ§Ã£o"""
+        # Criar 5 lanÃ§amentos
         for i in range(5):
-            entry = FinancialEntry(
+            entry = build_financial_entry(
                 user_id=seed_user_normal.id,
                 description=f"Entry {i}",
                 amount=100 * i,
@@ -252,8 +280,8 @@ class TestListFinancialEntries:
         yesterday = now - timedelta(days=1)
         tomorrow = now + timedelta(days=1)
         
-        # Criar lançamento de ontem
-        entry_old = FinancialEntry(
+        # Criar lanÃ§amento de ontem
+        entry_old = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Old",
             amount=100,
@@ -261,8 +289,8 @@ class TestListFinancialEntries:
             status="pending",
             occurred_at=yesterday
         )
-        # Criar lançamento de hoje
-        entry_today = FinancialEntry(
+        # Criar lanÃ§amento de hoje
+        entry_today = build_financial_entry(
             user_id=seed_user_normal.id,
             description="Today",
             amount=200,
@@ -306,7 +334,7 @@ class TestCreateFinancialEntry:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 422 se faltar campos obrigatórios"""
+        """Deve retornar 422 se faltar campos obrigatÃ³rios"""
         payload = {"description": "Missing fields"}
         
         client.headers.update(auth_headers_user)
@@ -330,7 +358,7 @@ class TestGetFinancialEntryById:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 404 para lançamento inexistente"""
+        """Deve retornar 404 para lanÃ§amento inexistente"""
         fake_id = uuid4()
         
         client.headers.update(auth_headers_user)
@@ -357,8 +385,8 @@ class TestUpdateFinancialEntryStatus:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Deve permitir transição pending -> paid no endpoint dedicado."""
-        entry = FinancialEntry(
+        """Deve permitir transiÃ§Ã£o pending -> paid no endpoint dedicado."""
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="revenue",
             amount=100.0,
@@ -388,12 +416,12 @@ class TestUpdateFinancialEntryStatus:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Deve bloquear transição inválida paid -> pending."""
-        entry = FinancialEntry(
+        """Deve bloquear transiÃ§Ã£o invÃ¡lida paid -> pending."""
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="revenue",
             amount=120.0,
-            description="Receita já paga",
+            description="Receita jÃ¡ paga",
             status="paid",
             occurred_at=datetime.utcnow()
         )
@@ -421,8 +449,8 @@ class TestUpdateFinancialEntryGeneric:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """PATCH genérico deve bloquear alteração direta de status."""
-        entry = FinancialEntry(
+        """PATCH genÃ©rico deve bloquear alteraÃ§Ã£o direta de status."""
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="expense",
             amount=80.0,
@@ -459,7 +487,7 @@ class TestDeleteFinancialEntry:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 404 para lançamento inexistente"""
+        """Deve retornar 404 para lanÃ§amento inexistente"""
         fake_id = uuid4()
         
         client.headers.update(auth_headers_user)
@@ -474,11 +502,11 @@ class TestDeleteFinancialEntry:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Deve deletar lançamento com status=pending"""
+        """Deve deletar lanÃ§amento com status=pending"""
         from app.models.financial_entry import FinancialEntry
         from datetime import datetime
         
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='expense',
             amount=50.0,
@@ -508,11 +536,11 @@ class TestDeleteFinancialEntry:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Deve retornar 409 ao tentar deletar lançamento pago"""
+        """Deve retornar 409 ao tentar deletar lanÃ§amento pago"""
         from app.models.financial_entry import FinancialEntry
         from datetime import datetime
         
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='revenue',
             amount=100.0,
@@ -540,12 +568,12 @@ class TestDeleteFinancialEntry:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Usuário não pode deletar lançamento de outro usuário"""
+        """UsuÃ¡rio nÃ£o pode deletar lanÃ§amento de outro usuÃ¡rio"""
         from app.models.financial_entry import FinancialEntry
         from datetime import datetime
         
-        # Lançamento de outro usuário
-        entry = FinancialEntry(
+        # LanÃ§amento de outro usuÃ¡rio
+        entry = build_financial_entry(
             user_id=seed_user_other.id,
             kind='expense',
             amount=30.0,
@@ -571,8 +599,8 @@ class TestDeleteFinancialEntry:
         auth_headers_user: dict,
         db_session: Session
     ):
-        """Lançamento com deleted_at preenchido não deve aparecer na listagem padrão."""
-        active_entry = FinancialEntry(
+        """LanÃ§amento com deleted_at preenchido nÃ£o deve aparecer na listagem padrÃ£o."""
+        active_entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="expense",
             amount=30.0,
@@ -580,7 +608,7 @@ class TestDeleteFinancialEntry:
             status="pending",
             occurred_at=datetime.utcnow()
         )
-        deleted_entry = FinancialEntry(
+        deleted_entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="expense",
             amount=40.0,
@@ -605,14 +633,14 @@ class TestDeleteFinancialEntry:
 
 
 class TestFinancialRoutesEdgeCases:
-    """Testes de edge cases e validações"""
+    """Testes de edge cases e validaÃ§Ãµes"""
     
     def test_list_entries_invalid_page(
         self,
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve validar parâmetros de paginação inválidos"""
+        """Deve validar parÃ¢metros de paginaÃ§Ã£o invÃ¡lidos"""
         client.headers.update(auth_headers_user)
         
         # Page zero ou negativo
@@ -624,7 +652,7 @@ class TestFinancialRoutesEdgeCases:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve limitar page_size ao máximo permitido"""
+        """Deve limitar page_size ao mÃ¡ximo permitido"""
         client.headers.update(auth_headers_user)
         
         # page_size=500 (acima do limite de 100)
@@ -638,7 +666,7 @@ class TestFinancialRoutesEdgeCases:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 400 para status inválido"""
+        """Deve retornar 400 para status invÃ¡lido"""
         client.headers.update(auth_headers_user)
         
         response = client.get("/financial/entries?status=invalid_status_xyz")
@@ -651,7 +679,7 @@ class TestFinancialRoutesEdgeCases:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 400 para kind inválido"""
+        """Deve retornar 400 para kind invÃ¡lido"""
         client.headers.update(auth_headers_user)
         
         response = client.get("/financial/entries?kind=invalid_kind")
@@ -689,7 +717,7 @@ class TestFinancialRoutesEdgeCases:
         
         response = client.post("/financial/entries", json=payload)
         
-        # Validação Pydantic ou ValueError -> 400/422
+        # ValidaÃ§Ã£o Pydantic ou ValueError -> 400/422
         assert response.status_code in [400, 422]
     
     def test_create_entry_with_invalid_kind(
@@ -697,7 +725,7 @@ class TestFinancialRoutesEdgeCases:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Deve retornar 400/422 para kind inválido"""
+        """Deve retornar 400/422 para kind invÃ¡lido"""
         client.headers.update(auth_headers_user)
         
         payload = {
@@ -709,7 +737,7 @@ class TestFinancialRoutesEdgeCases:
         
         response = client.post("/financial/entries", json=payload)
         
-        # Validação Pydantic/Literal ou ValueError -> 400/422
+        # ValidaÃ§Ã£o Pydantic/Literal ou ValueError -> 400/422
         assert response.status_code in [400, 422]
     
     def test_update_status_not_found(
@@ -735,9 +763,9 @@ class TestFinancialRoutesEdgeCases:
         db_session: Session,
         seed_user_normal: User
     ):
-        """Deve retornar 400 para status inválido"""
+        """Deve retornar 400 para status invÃ¡lido"""
         # Criar entry
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="revenue",
             amount=100.0,
@@ -755,7 +783,7 @@ class TestFinancialRoutesEdgeCases:
             json={"status": "invalid_status"}
         )
         
-        # Validação Pydantic/Literal ou ValueError -> 400/422
+        # ValidaÃ§Ã£o Pydantic/Literal ou ValueError -> 400/422
         assert response.status_code in [400, 422]
 
     def test_create_entry_origin_is_normalized_to_manual(
@@ -763,7 +791,7 @@ class TestFinancialRoutesEdgeCases:
         client: TestClient,
         auth_headers_user: dict
     ):
-        """Origin deve ser persistido em padrão único MANUAL."""
+        """Origin deve ser persistido em padrÃ£o Ãºnico MANUAL."""
         client.headers.update(auth_headers_user)
 
         payload = {
@@ -778,3 +806,4 @@ class TestFinancialRoutesEdgeCases:
 
         data = response.json()
         assert data["origin"] == "MANUAL"
+

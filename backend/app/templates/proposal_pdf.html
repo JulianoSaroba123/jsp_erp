@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Proposta Comercial</title>
+    <style>
+        /*
+          Template profissional de proposta comercial JSP.
+          Cores extraídas do logotipo da empresa (azul e laranja).
+        */
+        :root {
+            --primary-color: #002755;   /* azul JSP mais escuro */
+            --secondary-color: #f49d16; /* laranja de destaque */
+            --text-color: #333333;
+            --border-color: #dddddd;
+            --background-light: #f5f5f5;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Controles avançados de quebra de página */
+        .page-break-before {
+            page-break-before: always;
+            break-before: page;
+        }
+        
+        .section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin-bottom: 15px;
+        }
+        
+        .section.keep-together {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            display: block;
+        }
+        
+        .section-header {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        
+        .section-body {
+            orphans: 4;
+            widows: 4;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        
+        .items-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* Cabeçalho */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .header-logo {
+            width: 20%;
+        }
+        .header-logo img {
+            height: 80px;
+            margin-left: 10px;
+        }
+        .header-info {
+            width: 80%;
+            text-align: center;
+            background: linear-gradient(135deg, #f8faff, #e6f2ff);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .header-info h1 {
+            margin: 0;
+            font-size: 20px;
+            color: var(--primary-color);
+        }
+        .header-info .details {
+            font-size: 10px;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        /* Título e identificação da proposta */
+        .title-row {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .ident-row {
+            text-align: center;
+            margin: 5px 0 15px 0;
+            color: var(--primary-color);
+            background: linear-gradient(135deg, #f0f8ff, #e6f2ff);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* Seções numeradas */
+        .section {
+            margin-top: 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 4px;
+        }
+        .section-header {
+            background: linear-gradient(135deg, var(--primary-color), #1a4480);
+            color: white;
+            padding: 12px;
+            border-bottom: 1px solid var(--primary-color);
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+        }
+        .section-header .number {
+            background: var(--secondary-color);
+            color: #ffffff;
+            padding: 2px 6px;
+            margin-right: 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .section-body {
+            padding: 15px;
+            color: var(--text-color);
+        }
+
+        /* Tabela de itens */
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid var(--primary-color);
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        table.items th,
+        table.items td {
+            border: 1px solid var(--primary-color);
+            padding: 8px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        table.items th {
+            background: var(--primary-color);
+            color: white;
+            text-align: left;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+        
+        .produto-section, .servico-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin-bottom: 15px;
+        }
+        
+        .produto-section h4, .servico-section h4 {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        /* Assinaturas */
+        .signature-table {
+            width: 100%;
+            margin: 40px auto 0 auto;
+            text-align: center;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .signature-table td {
+            width: 35%;
+            padding: 20px 15px;
+            vertical-align: top;
+            text-align: center;
+        }
+        .signature-table td:nth-child(2) {
+            width: 30%;
+        }
+        .signature-line {
+            border-top: 2px solid var(--primary-color);
+            margin: 50px auto 15px auto;
+            width: 80%;
+        }
+
+        /* Rodapé */
+        .footer {
+            border-top: 2px solid var(--primary-color);
+            background: linear-gradient(135deg, #f8faff, #e6f2ff);
+            padding: 15px;
+            text-align: center;
+            font-size: 10px;
+            color: var(--primary-color);
+            margin-top: 30px;
+            border-radius: 6px;
+        }
+        .footer p {
+            margin: 4px 0;
+        }
+        
+        @media print {
+            body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            
+            .section {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                margin-bottom: 12px;
+                display: block;
+            }
+            
+            table.items {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            .grid-container {
+                display: block !important;
+            }
+            
+            .grid-item {
+                display: block !important;
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <div class="header-logo">
+            {% if company.logo_url %}
+                <img src="{{ company.logo_url }}" alt="{{ company.company_name }}" style="max-height: 80px; max-width: 100%;">
+            {% else %}
+                <!-- Logo placeholder -->
+                <div style="width: 80px; height: 80px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px;">{{ company.trade_name[:3] if company.trade_name else 'JSP' }}</div>
+            {% endif %}
+        </div>
+        <div class="header-info">
+            <h1>{{ company.company_name }}</h1>
+            <div class="details">
+                CNPJ: {{ company.cnpj }}<br>
+                {{ company.street }} – {{ company.neighborhood }} – {{ company.city }}/{{ company.state }} – CEP {{ company.cep }}<br>
+                {{ company.phone }}{% if company.phone_2 %} • {{ company.phone_2 }}{% endif %}<br>
+                {{ company.email }} | {{ company.website }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Texto Padrão de Cabeçalho (Configurável) -->
+    {% if company.pdf_header_text %}
+    <div style="margin: 15px 0; padding: 12px; background: linear-gradient(135deg, #f0f8ff, #e6f2ff); border-left: 4px solid var(--primary-color); border-radius: 4px; font-size: 11px; line-height: 1.6; color: #333;">
+        {{ company.pdf_header_text }}
+    </div>
+    {% endif %}
+    
+    <!-- Título e identificação -->
+    <div class="title-row">PROPOSTA COMERCIAL</div>
+    <div class="ident-row">
+        <strong>Número:</strong> {{ proposal.number or 'JSP-001' }}&nbsp;&nbsp;
+        <strong>Data de Emissão:</strong> {{ proposal.issue_date.strftime('%d/%m/%Y') if proposal.issue_date else '' }}&nbsp;&nbsp;
+        <strong>Vendedor:</strong> {{ proposal.user.name if proposal.user else company.trade_name }}
+    </div>
+    
+    <!-- 01 Dados do Cliente -->
+    <div class="section keep-together">
+        <div class="section-header"><span class="number">01</span>Dados do Cliente</div>
+        <div class="section-body" style="background: white;">
+            <div class="grid-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">NOME</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; word-wrap: break-word;">{{ proposal.customer.name if proposal.customer else 'N/A' }}</div>
+                </div>
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">CPF/CNPJ</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px;">{{ proposal.customer.document if proposal.customer and proposal.customer.document else 'N/A' }}</div>
+                </div>
+            </div>
+            <div class="grid-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">TELEFONE</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px;">{{ proposal.customer.phone if proposal.customer and proposal.customer.phone else 'N/A' }}</div>
+                </div>
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">E-MAIL</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; word-wrap: break-word;">{{ proposal.customer.email if proposal.customer and proposal.customer.email else 'N/A' }}</div>
+                </div>
+            </div>
+            <div style="margin-bottom: 0;">
+                <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">ENDEREÇO</div>
+                <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; word-wrap: break-word;">
+                    {% if proposal.customer %}
+                        {{ proposal.customer.address if proposal.customer.address else '' }}{% if proposal.customer.city %}, {{ proposal.customer.city }}{% endif %}{% if proposal.customer.state %}/{{ proposal.customer.state }}{% endif %}{% if proposal.customer.zip_code %} - CEP {{ proposal.customer.zip_code }}{% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 02 Itens da Proposta -->
+    <div class="section items-section">
+        <div class="section-header"><span class="number">02</span>Itens da Proposta</div>
+        <div class="section-body">
+            
+            <!-- PRODUTOS -->
+            {% if proposal.products and proposal.products|length > 0 %}
+            <div class="produto-section">
+            <h4 style="color: var(--primary-color); margin: 10px 0; padding: 8px; background: #e6f2ff; border-left: 4px solid var(--primary-color);">
+                📦 PRODUTOS / MATERIAIS
+            </h4>
+            <table class="items">
+                <tr>
+                    <th style="width:8%; text-align:center;">Item</th>
+                    <th style="width:50%;">Descrição</th>
+                    <th style="width:12%; text-align:center;">Qtd</th>
+                    <th style="width:15%; text-align:right;">Valor Unit.</th>
+                    <th style="width:15%; text-align:right;">Total</th>
+                </tr>
+                {% for item in proposal.products %}
+                <tr>
+                    <td style="text-align:center;">{{ loop.index }}</td>
+                    <td>{{ item.description or 'Item não informado' }}</td>
+                    <td style="text-align:center;">{{ "{:g}".format(item.quantity|float) if item.quantity else '0' }}</td>
+                    <td style="text-align:right; white-space: nowrap;">R$ {{ "{:,.2f}".format(item.unit_price or 0).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td style="text-align:right; white-space: nowrap;">R$ {{ "{:,.2f}".format(item.total_price or 0).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            </div>
+            {% endif %}
+            
+            <!-- SERVIÇOS -->
+            {% if proposal.items and proposal.items|length > 0 %}
+            <div class="servico-section">
+            <h4 style="color: var(--primary-color); margin: 20px 0 10px 0; padding: 8px; background: #e6ffe6; border-left: 4px solid #28a745;">
+                🔧 SERVIÇOS
+            </h4>
+            <table class="items">
+                <tr>
+                    <th style="width:8%; text-align:center;">Item</th>
+                    <th style="width:40%;">Descrição</th>
+                    <th style="width:12%; text-align:center;">Tipo</th>
+                    <th style="width:10%; text-align:center;">Qtd</th>
+                    <th style="width:15%; text-align:right;">Valor Unit.</th>
+                    <th style="width:15%; text-align:right;">Total</th>
+                </tr>
+                {% for item in proposal.items %}
+                <tr>
+                    <td style="text-align:center;">{{ loop.index + (proposal.products|length if proposal.products else 0) }}</td>
+                    <td>{{ item.description or 'Serviço não informado' }}</td>
+                    <td style="text-align:center;">
+                        {{ item.service_type|title if item.service_type else 'N/A' }}
+                    </td>
+                    <td style="text-align:center;">{{ "{:g}".format(item.quantity|float) if item.quantity else '0' }}</td>
+                    <td style="text-align:right; white-space: nowrap;">R$ {{ "{:,.2f}".format(item.unit_price or 0).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td style="text-align:right; white-space: nowrap;">R$ {{ "{:,.2f}".format(item.total_price or 0).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            </div>
+            {% endif %}
+            
+            <!-- MENSAGEM SE NÃO HOUVER ITENS -->
+            {% if not (proposal.products or proposal.items) %}
+            <div style="text-align:center; padding:30px; color:#666666; background: #f9f9f9; border: 2px dashed #ddd; border-radius: 8px;">
+                <p style="font-size: 14px; margin: 0;">⚠️ Nenhum produto ou serviço adicionado à proposta</p>
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+    
+    <!-- 03 Detalhamento da Proposta -->
+    <div class="section keep-together">
+        <div class="section-header"><span class="number">03</span>Detalhamento da Proposta</div>
+        <div class="section-body" style="background: white;">
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">TÍTULO</div>
+                <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px;">{{ proposal.title or 'Sem título' }}</div>
+            </div>
+            {% if proposal.description %}
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">DESCRIÇÃO</div>
+                <div style="padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; line-height: 1.6; white-space: pre-wrap;">{{ proposal.description }}</div>
+            </div>
+            {% endif %}
+            {% if company.default_proposal_message %}
+            <div style="margin-top: 15px;">
+                <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">MENSAGEM</div>
+                <div style="padding: 15px; background: linear-gradient(135deg, #fff8e6, #fffbf0); border: 1px solid var(--secondary-color); border-left: 4px solid var(--secondary-color); border-radius: 3px; line-height: 1.6; white-space: pre-wrap;">{{ company.default_proposal_message }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 04 Resumo Financeiro -->
+    <div class="section keep-together" style="border: 2px solid var(--primary-color);">
+        <div class="section-header">
+            <span class="number">04</span>Resumo Financeiro
+        </div>
+        <div class="section-body" style="background: white;">
+            {% set subtotal_produtos = proposal.parts_amount or 0 %}
+            {% set subtotal_servicos = proposal.service_amount or 0 %}
+            {% set desconto = proposal.discount_amount or 0 %}
+            {% set valor_final = proposal.total_amount or 0 %}
+            
+            <div class="grid-container" style="display: flex; gap: 15px;">
+                <!-- Coluna Esquerda - Valores -->
+                <div style="flex: 1; background: white; border: 1px solid var(--primary-color); padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #ddd;">
+                        <span style="font-weight: bold; color: #333;">SUBTOTAL MATERIAIS</span>
+                        <span style="font-weight: bold; color: #333; white-space: nowrap;">R$ {{ "{:,.2f}".format(subtotal_produtos).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #ddd;">
+                        <span style="font-weight: bold; color: #333;">SUBTOTAL SERVIÇOS</span>
+                        <span style="font-weight: bold; color: #333; white-space: nowrap;">R$ {{ "{:,.2f}".format(subtotal_servicos).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    {% if desconto > 0 %}
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #ddd;">
+                        <span style="font-weight: bold; color: #c0392b;">DESCONTO</span>
+                        <span style="font-weight: bold; color: #c0392b; white-space: nowrap;">- R$ {{ "{:,.2f}".format(desconto).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    {% endif %}
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--primary-color);">
+                        <span style="font-weight: bold; font-size: 16px; color: var(--primary-color);">VALOR TOTAL</span>
+                        <span style="font-weight: bold; font-size: 16px; color: var(--primary-color); white-space: nowrap;">R$ {{ "{:,.2f}".format(valor_final).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                </div>
+                
+                <!-- Coluna Direita - Dados Bancários -->
+                <div style="flex: 1;">
+                    <div style="background: var(--primary-color); color: white; padding: 8px 12px; font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 0;">
+                        DADOS PARA TRANSFERÊNCIA
+                    </div>
+                    <div style="background: white; border: 1px solid var(--primary-color); border-top: none;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-weight: bold; background: #f8f9fa; width: 30%; font-size: 9px;">BANCO</td>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 9px;">{{ company.bank_name }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-weight: bold; background: #f8f9fa; font-size: 9px;">AGÊNCIA</td>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 9px;">{{ company.bank_agency }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-weight: bold; background: #f8f9fa; font-size: 9px;">CONTA</td>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 9px;">{{ company.bank_account }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-weight: bold; background: #f8f9fa; font-size: 9px;">TITULAR</td>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 9px;">{{ company.company_name }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-weight: bold; background: #f8f9fa; font-size: 9px;">CNPJ</td>
+                                <td style="padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 9px;">{{ company.cnpj }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 10px; font-weight: bold; background: #f8f9fa; font-size: 9px;">PIX</td>
+                                <td style="padding: 6px 10px; font-size: 9px;">{{ company.pix_key }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 05 Condições Comerciais -->
+    <div class="section keep-together">
+        <div class="section-header"><span class="number">05</span>Condições Comerciais</div>
+        <div class="section-body" style="background: white;">
+            <div class="grid-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">FORMA DE PAGAMENTO</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; word-wrap: break-word;">{{ proposal.payment_condition or 'PIX / Transferência' }}</div>
+                </div>
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">PRAZO DE ENTREGA</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px;">{{ proposal.delivery_days or 'A combinar' }}</div>
+                </div>
+            </div>
+            <div class="grid-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 0;">
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">GARANTIA</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; word-wrap: break-word;">{{ proposal.warranty_days or '90 dias' }}</div>
+                </div>
+                <div class="grid-item">
+                    <div style="font-weight: bold; color: #666; font-size: 10px; margin-bottom: 3px;">VALIDADE</div>
+                    <div style="padding: 8px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px;">
+                        {{ proposal.validity_date.strftime('%d/%m/%Y') if proposal.validity_date else '30 dias' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 06 Observações -->
+    {% if proposal.observations %}
+    <div class="section keep-together">
+        <div class="section-header"><span class="number">06</span>Observações</div>
+        <div class="section-body" style="background: white;">
+            <div style="padding: 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 3px; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap;">{{ proposal.observations }}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 07 Missão, Visão e Valores -->
+    <div class="section page-break-before">
+        <div class="section-header"><span class="number">{% if proposal.observations %}07{% else %}06{% endif %}</span>Nossos Valores Institucionais</div>
+        <div class="section-body" style="background: white;">
+            
+            <!-- Missão -->
+            <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--primary-color); color: white; padding: 10px 20px; font-weight: bold; font-size: 14px; display: flex; align-items: center;">
+                    <span style="font-size: 18px; margin-right: 10px;">🎯</span>
+                    <span>MISSÃO</span>
+                </div>
+                <div style="padding: 20px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); font-size: 12px; line-height: 1.7; color: #333; text-align: justify;">
+                    {{ company.mission }}
+                </div>
+            </div>
+            
+            <!-- Visão -->
+            <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--primary-color); color: white; padding: 10px 20px; font-weight: bold; font-size: 14px; display: flex; align-items: center;">
+                    <span style="font-size: 18px; margin-right: 10px;">🔮</span>
+                    <span>VISÃO</span>
+                </div>
+                <div style="padding: 20px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); font-size: 12px; line-height: 1.7; color: #333; text-align: justify;">
+                    {{ company.vision }}
+                </div>
+            </div>
+            
+            <!-- Valores -->
+            <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--primary-color); color: white; padding: 10px 20px; font-weight: bold; font-size: 14px; display: flex; align-items: center;">
+                    <span style="font-size: 18px; margin-right: 10px;">⭐</span>
+                    <span>VALORES</span>
+                </div>
+                <div style="padding: 20px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); font-size: 12px; line-height: 1.7; color: #333;">
+                    <ul style="margin: 0; padding-left: 20px; line-height: 2.0;">
+                        {% for value in company.company_values %}
+                        <li><strong>{{ value }}</strong></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Frase de Assinatura -->
+            <div style="text-align: center; padding: 20px; background: linear-gradient(45deg, var(--primary-color), #0056b3); color: white; border-radius: 8px; margin-top: 25px;">
+                <div style="font-style: italic; font-size: 14px; line-height: 1.5; margin-bottom: 8px;">
+                    "Energia para o seu futuro, automação para o seu sucesso"
+                </div>
+                <div style="font-size: 11px; opacity: 0.9; font-weight: 500;">
+                    - {{ company.company_name }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 08 Assinaturas -->
+    <div class="section keep-together">
+        <div class="section-header"><span class="number">{% if proposal.observations %}08{% else %}07{% endif %}</span>Assinaturas</div>
+        <div class="section-body">
+            <table class="signature-table">
+                <tr>
+                    <td>
+                        <div class="signature-line"></div>
+                        <strong>{{ proposal.customer.name if proposal.customer else 'CLIENTE' }}</strong><br>
+                        <span style="font-size: 11px;">CPF/CNPJ: {{ proposal.customer.document if proposal.customer else '_______________' }}</span>
+                    </td>
+                    <td></td>
+                    <td>
+                        <div class="signature-line"></div>
+                        <strong>{{ company.company_name }}</strong><br>
+                        <span style="font-size: 11px;">Responsável Técnico</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Rodapé -->
+    <div class="footer">
+        {% if company.pdf_footer_text %}
+        <div style="padding: 10px; background: white; border: 1px solid var(--primary-color); border-radius: 4px; margin-bottom: 10px;">
+            <p style="margin: 0; line-height: 1.6; white-space: pre-wrap;">{{ company.pdf_footer_text }}</p>
+        </div>
+        {% endif %}
+        <p><strong>{{ company.company_name }}</strong></p>
+        <p>CNPJ: {{ company.cnpj }} | Tel: {{ company.phone }}{% if company.phone_2 %} • {{ company.phone_2 }}{% endif %}</p>
+        <p>{{ company.email }}{% if company.website %} | {{ company.website }}{% endif %}</p>
+        <p style="margin-top: 8px; font-size: 9px;">Proposta Comercial {{ proposal.number or 'XXX' }} | Emitida em {{ now.strftime('%d/%m/%Y às %H:%M') }}</p>
+    </div>
+    
+</body>
+</html>

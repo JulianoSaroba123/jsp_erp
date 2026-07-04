@@ -15,6 +15,15 @@ class FinancialRepository:
 
     @staticmethod
     def create(db: Session, entry: FinancialEntry) -> FinancialEntry:
+        if getattr(entry, "interest", None) is None:
+            entry.interest = 0
+        if getattr(entry, "discount", None) is None:
+            entry.discount = 0
+        if getattr(entry, "penalty", None) is None:
+            entry.penalty = 0
+        if getattr(entry, "original_amount", None) is None:
+            entry.original_amount = entry.amount
+
         db.add(entry)
         db.commit()
         db.refresh(entry)

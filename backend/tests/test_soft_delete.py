@@ -24,6 +24,22 @@ from app.repositories.financial_repository import FinancialRepository
 from app.services.order_service import OrderService
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    payload = dict(overrides)
+    amount = payload.get("amount", 0)
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+    return FinancialEntry(**payload)
+
+
 @pytest.mark.soft_delete
 def test_soft_delete_order_sets_deleted_fields(db_session, seed_user_normal):
     """Soft delete de Order deve preencher deleted_at e deleted_by sem remover do banco."""
@@ -208,7 +224,7 @@ def test_soft_delete_financial_entry(db_session, seed_user_normal):
     """Soft delete de FinancialEntry deve funcionar como Order."""
     
     # Criar financial entry manual
-    entry = FinancialEntry(
+    entry = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="pending",
@@ -251,14 +267,14 @@ def test_soft_deleted_financial_entry_not_in_listings(db_session, seed_user_norm
     """FinancialEntries soft-deleted não aparecem em list_paginated."""
     
     # Criar 2 entries
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
         amount=100.00,
         description="Active entry"
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="expense",
         status="pending",
@@ -303,7 +319,7 @@ def test_restore_financial_entry(db_session, seed_user_normal):
     """Restaurar FinancialEntry soft-deleted."""
     
     # Criar e soft delete
-    entry = FinancialEntry(
+    entry = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
@@ -349,7 +365,7 @@ def test_delete_order_with_financial_entry_soft_deletes_both(db_session, seed_us
     )
     
     # Criar financial entry vinculado
-    financial_entry = FinancialEntry(
+    financial_entry = build_financial_entry(
         order_id=order.id,
         user_id=seed_user_normal.id,
         kind="revenue",

@@ -17,6 +17,26 @@ from app.models.order import Order
 from app.models.financial_entry import FinancialEntry
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    amount = overrides.get("amount", 0)
+    payload = {
+        "kind": "revenue",
+        "status": "pending",
+        "amount": amount,
+        "description": "Test financial entry",
+        "interest": 0,
+        "discount": 0,
+        "penalty": 0,
+        "origin": "manual",
+    }
+    payload.update(overrides)
+
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = payload.get("amount")
+
+    return FinancialEntry(**payload)
+
+
 @pytest.mark.financial
 @pytest.mark.integration
 def test_order_financial_idempotency(
@@ -124,7 +144,7 @@ def test_financial_entry_unique_order_constraint(
     db_session.refresh(order)
     
     # Create first financial entry
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         order_id=order.id,
         user_id=seed_user_normal.id,
         kind="revenue",
@@ -136,7 +156,7 @@ def test_financial_entry_unique_order_constraint(
     db_session.commit()
     
     # Try to create duplicate
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         order_id=order.id,  # Same order_id
         user_id=seed_user_normal.id,
         kind="revenue",
@@ -175,7 +195,7 @@ def test_delete_order_removes_financial_entry(
     db_session.commit()
     db_session.refresh(order)
     
-    entry = FinancialEntry(
+    entry = build_financial_entry(
         order_id=order.id,
         user_id=seed_user_with_delete_permission.id,
         kind="revenue",
@@ -216,7 +236,7 @@ def test_get_financial_entries_multi_tenant(
     Test GET /financial/entries respects multi-tenant filtering.
     """
     # Create entry for seed_user_normal
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="pending",
@@ -226,7 +246,7 @@ def test_get_financial_entries_multi_tenant(
     db_session.add(entry1)
     
     # Create entry for seed_user_other
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_other.id,
         kind="expense",
         status="pending",
@@ -260,14 +280,14 @@ def test_financial_status_filter(
     Test filtering financial entries by status.
     """
     # Create entries with different statuses
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="pending",
         amount=100,
         description="Pending entry"
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",

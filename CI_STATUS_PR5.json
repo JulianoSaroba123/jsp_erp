@@ -1,0 +1,10 @@
+{
+  "status": "failure",
+  "check_name": "pytest / tests",
+  "url": "https://github.com/JulianoSaroba123/jsp_erp/actions/runs/28635658616/job/84921324483",
+  "review_requirements": {
+    "approvalsNeeded": 1,
+    "currentApprovals": 0,
+    "areChangesRequested": false
+  }
+}

@@ -8,6 +8,7 @@ Valida que:
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from uuid import uuid4
 
 from app.models.user import User
 from app.models.role import Role
@@ -22,39 +23,25 @@ class TestRBACEnforcement:
         """
         Testa método User.has_permission() diretamente
         """
-        # 1. Criar permission (idempotente)
-        read_permission = db_session.query(Permission).filter_by(
-            resource="test_orders", action="read"
-        ).first()
-        if not read_permission:
-            read_permission = Permission(resource="test_orders", action="read")
-            db_session.add(read_permission)
-        
-        delete_permission = db_session.query(Permission).filter_by(
-            resource="test_orders", action="delete"
-        ).first()
-        if not delete_permission:
-            delete_permission = Permission(resource="test_orders", action="delete")
-            db_session.add(delete_permission)
-        
+        unique_id = uuid4().hex[:8]
+        resource_name = f"test_orders_{unique_id}"
+
+        # 1. Criar permissions únicas para evitar interferência de dados reaproveitados
+        read_permission = Permission(resource=resource_name, action="read")
+        delete_permission = Permission(resource=resource_name, action="delete")
+        db_session.add_all([read_permission, delete_permission])
         db_session.flush()
-        
-        # 2. Criar role com apenas read (idempotente)
-        reader_role = db_session.query(Role).filter_by(name="reader_test_unique").first()
-        if not reader_role:
-            reader_role = Role(name="reader_test_unique")
-            db_session.add(reader_role)
-            db_session.flush()
-        
-        # Garantir que read_permission está associado ao role (idempotente)
-        if read_permission not in reader_role.permissions:
-            reader_role.permissions.append(read_permission)
-            db_session.flush()
-        
-        # 3. Criar user com role reader
+
+        # 2. Criar role única com apenas read
+        reader_role = Role(name=f"reader_test_{unique_id}")
+        reader_role.permissions.append(read_permission)
+        db_session.add(reader_role)
+        db_session.flush()
+
+        # 3. Criar user único com role reader
         user = User(
             name="Reader User",
-            email=f"reader_test_{hash('test1')}@example.com",
+            email=f"reader_test_{unique_id}@example.com",
             password_hash="hash",
             role="user"
         )
@@ -62,16 +49,16 @@ class TestRBACEnforcement:
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
-        
-        # For\u00e7ar carregamento dos roles e permissions (lazy loading)
-        # Acesso for\u00e7a SQLAlchemy a carregar relacionamentos antes de assertions
-        _ = len(user.roles)  # Carrega roles
+
+        # Recarregar da sessão para validar navegação real User -> Role -> Permission
+        user = db_session.query(User).filter(User.id == user.id).first()
+        _ = len(user.roles)
         for role in user.roles:
-            _ = len(role.permissions)  # Carrega permissions de cada role
-        
+            _ = len(role.permissions)
+
         # 4. Verificar permissões
-        assert user.has_permission("test_orders", "read") is True
-        assert user.has_permission("test_orders", "delete") is False
+        assert user.has_permission(resource_name, "read") is True
+        assert user.has_permission(resource_name, "delete") is False
         assert user.has_permission("financial", "read") is False
 
 

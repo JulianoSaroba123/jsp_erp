@@ -14,6 +14,22 @@ from app.models.user import User
 from app.models.financial_entry import FinancialEntry
 
 
+def build_financial_entry(**kwargs) -> FinancialEntry:
+    payload = dict(kwargs)
+    amount = payload.get("amount")
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+    return FinancialEntry(**payload)
+
+
 class TestDREReport:
     """Testes para GET /reports/dre"""
     
@@ -64,7 +80,7 @@ class TestDREReport:
     ):
         """Deve calcular DRE corretamente com lançamentos"""
         # Criar receita
-        revenue = FinancialEntry(
+        revenue = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='revenue',
             amount=1000.0,
@@ -74,7 +90,7 @@ class TestDREReport:
         )
         
         # Criar despesa
-        expense = FinancialEntry(
+        expense = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='expense',
             amount=300.0,
@@ -185,7 +201,7 @@ class TestPendingAgingReport:
     ):
         """Deve agrupar pendências por idade"""
         # Criar lançamento pendente antigo
-        old_entry = FinancialEntry(
+        old_entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='expense',
             amount=100.0,
@@ -195,7 +211,7 @@ class TestPendingAgingReport:
         )
         
         # Criar lançamento pendente recente
-        recent_entry = FinancialEntry(
+        recent_entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='expense',
             amount=50.0,
@@ -248,7 +264,7 @@ class TestTopEntriesReport:
         """Deve filtrar top receitas corretamente"""
         # Criar receitas
         for i in range(5):
-            entry = FinancialEntry(
+            entry = build_financial_entry(
                 user_id=seed_user_normal.id,
                 kind='revenue',
                 amount=100.0 * (i + 1),
@@ -279,7 +295,7 @@ class TestTopEntriesReport:
         """Deve filtrar top despesas corretamente"""
         # Criar despesas
         for i in range(3):
-            entry = FinancialEntry(
+            entry = build_financial_entry(
                 user_id=seed_user_normal.id,
                 kind='expense',
                 amount=50.0 * (i + 1),
@@ -528,7 +544,7 @@ class TestReportRoutesErrorBranches:
         today = datetime.utcnow()
         
         # Criar entry para user_normal
-        entry_own = FinancialEntry(
+        entry_own = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="revenue",
             amount=100.0,
@@ -539,7 +555,7 @@ class TestReportRoutesErrorBranches:
         db_session.add(entry_own)
         
         # Criar entry para outro usuário
-        entry_other = FinancialEntry(
+        entry_other = build_financial_entry(
             user_id=seed_user_other.id,
             kind="revenue",
             amount=500.0,
@@ -577,7 +593,7 @@ class TestReportRoutesErrorBranches:
         today = datetime.utcnow()
         
         # Criar entries de diferentes usuários
-        entry1 = FinancialEntry(
+        entry1 = build_financial_entry(
             user_id=seed_user_normal.id,
             kind="revenue",
             amount=100.0,
@@ -585,7 +601,7 @@ class TestReportRoutesErrorBranches:
             status="paid",
             occurred_at=today
         )
-        entry2 = FinancialEntry(
+        entry2 = build_financial_entry(
             user_id=seed_user_other.id,
             kind="revenue",
             amount=200.0,

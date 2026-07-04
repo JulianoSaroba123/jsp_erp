@@ -13,6 +13,27 @@ from app.models.financial_entry import FinancialEntry
 from app.models.order import Order
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    amount = overrides.get("amount", Decimal("100.00"))
+    payload = {
+        "kind": "revenue",
+        "status": "pending",
+        "amount": amount,
+        "description": "Test Entry",
+        "occurred_at": datetime.utcnow(),
+        "interest": Decimal("0"),
+        "discount": Decimal("0"),
+        "penalty": Decimal("0"),
+        "origin": "manual",
+    }
+    payload.update(overrides)
+
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = payload.get("amount")
+
+    return FinancialEntry(**payload)
+
+
 class TestFinancialServiceListValidations:
     """
     Testes de validação para list_entries.
@@ -242,7 +263,7 @@ class TestFinancialServiceUpdateValidations:
         Regra: new_status deve estar em VALID_STATUSES = ['pending', 'paid', 'canceled']
         """
         # Criar entry válido para teste
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='revenue',
             status='pending',
@@ -285,7 +306,7 @@ class TestFinancialServiceUpdateValidations:
         Regra: Se current_status == new_status, apenas retorna (idempotência)
         """
         # Criar entry com status 'pending'
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='revenue',
             status='pending',
@@ -316,7 +337,7 @@ class TestFinancialServiceUpdateValidations:
         Outras transições são bloqueadas (paid -> pending, canceled -> paid, etc)
         """
         # Criar entry com status 'paid'
-        entry = FinancialEntry(
+        entry = build_financial_entry(
             user_id=seed_user_normal.id,
             kind='revenue',
             status='paid',
