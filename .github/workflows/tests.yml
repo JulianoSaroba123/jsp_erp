@@ -71,13 +71,15 @@ jobs:
       - name: Run tests with coverage
         working-directory: backend
         run: |
-          # Threshold temporario durante expansao dos modulos enterprise; meta futura: retornar para 85% apos cobertura de proposals, service_orders e settings.
-          pytest --disable-warnings \
+          set -o pipefail
+          pytest -ra \
+            --disable-warnings \
             --cov=app \
             --cov-branch \
-            --cov-report=term-missing \
+            --cov-report=term-missing:skip-covered \
             --cov-report=html \
-            --cov-fail-under=65
+            --cov-fail-under=65 \
+            2>&1 | tee pytest-output.log
 
       - name: Upload coverage HTML report
         if: always()
@@ -85,5 +87,14 @@ jobs:
         with:
           name: coverage-report-html
           path: backend/htmlcov
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload pytest output log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output-log
+          path: backend/pytest-output.log
           retention-days: 14
           if-no-files-found: warn
