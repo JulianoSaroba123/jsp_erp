@@ -32,6 +32,86 @@ from app.models.permission import Permission
 from app.auth.security import hash_password, create_access_token
 
 
+RBAC_BASE_PERMISSIONS = [
+    ("products", "read"),
+    ("products", "create"),
+    ("products", "update"),
+    ("products", "delete"),
+    ("orders", "read"),
+    ("orders", "create"),
+    ("orders", "update"),
+    ("orders", "delete"),
+    ("financial", "read"),
+    ("financial", "create"),
+    ("financial", "update"),
+    ("financial", "delete"),
+    ("reports", "read"),
+]
+
+USER_ROLE_PERMISSIONS = [
+    ("products", "read"),
+    ("products", "create"),
+    ("products", "update"),
+    ("products", "delete"),
+    ("orders", "read"),
+    ("orders", "create"),
+    ("orders", "update"),
+    ("financial", "read"),
+    ("financial", "create"),
+    ("financial", "update"),
+    ("reports", "read"),
+]
+
+
+def _get_or_create_permission(db_session: Session, resource: str, action: str) -> Permission:
+    permission = db_session.query(Permission).filter_by(resource=resource, action=action).first()
+    if permission:
+        return permission
+
+    permission = Permission(
+        resource=resource,
+        action=action,
+        description=f"{action} {resource}",
+    )
+    db_session.add(permission)
+    db_session.flush()
+    return permission
+
+
+def _get_or_create_role(db_session: Session, name: str, description: str) -> Role:
+    role = db_session.query(Role).filter_by(name=name).first()
+    if role:
+        return role
+
+    role = Role(name=name, description=description)
+    db_session.add(role)
+    db_session.flush()
+    return role
+
+
+def _ensure_role_permissions(db_session: Session, role: Role, permission_pairs: list[tuple[str, str]]) -> None:
+    existing_pairs = {(permission.resource, permission.action) for permission in role.permissions}
+
+    for resource, action in permission_pairs:
+        key = (resource, action)
+        if key in existing_pairs:
+            continue
+        permission = _get_or_create_permission(db_session, resource, action)
+        role.permissions.append(permission)
+        existing_pairs.add(key)
+
+
+def _ensure_base_test_rbac(db_session: Session) -> dict[str, Role]:
+    admin_role = _get_or_create_role(db_session, "admin", "Admin with full test permissions")
+    user_role = _get_or_create_role(db_session, "user", "Standard user for tests")
+
+    _ensure_role_permissions(db_session, admin_role, RBAC_BASE_PERMISSIONS)
+    _ensure_role_permissions(db_session, user_role, USER_ROLE_PERMISSIONS)
+    db_session.flush()
+
+    return {"admin": admin_role, "user": user_role}
+
+
 # ============================================================================
 # DATABASE CONFIGURATION
 # ============================================================================
@@ -176,14 +256,17 @@ def seed_user_admin(db_session: Session) -> User:
     
     Credentials: admin@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    admin_role = roles["admin"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "admin@test.com").first()
     if existing:
-        # Ensure RBAC role is assigned
-        admin_role = db_session.query(Role).filter_by(name="admin").first()
-        if admin_role and admin_role not in existing.roles:
+        # Ensure RBAC role is assigned deterministically
+        if admin_role not in existing.roles:
             existing.roles.append(admin_role)
-            db_session.commit()
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -196,9 +279,8 @@ def seed_user_admin(db_session: Session) -> User:
     db_session.add(user)
     db_session.flush()
     
-    # Assign RBAC role (admin role with all permissions)
-    admin_role = db_session.query(Role).filter_by(name="admin").first()
-    if admin_role:
+    # Assign RBAC role (admin role with deterministic permissions)
+    if admin_role not in user.roles:
         user.roles.append(admin_role)
     
     db_session.commit()
@@ -217,14 +299,17 @@ def seed_user_normal(db_session: Session) -> User:
     
     Credentials: user@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    user_role = roles["user"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "user@test.com").first()
     if existing:
-        # Ensure RBAC role is assigned
-        user_role = db_session.query(Role).filter_by(name="user").first()
-        if user_role and user_role not in existing.roles:
+        # Ensure RBAC role is assigned deterministically
+        if user_role not in existing.roles:
             existing.roles.append(user_role)
-            db_session.commit()
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -237,9 +322,8 @@ def seed_user_normal(db_session: Session) -> User:
     db_session.add(user)
     db_session.flush()
     
-    # Assign RBAC role (user role with products:read/create/update)
-    user_role = db_session.query(Role).filter_by(name="user").first()
-    if user_role:
+    # Assign RBAC role (user role with deterministic test permissions)
+    if user_role not in user.roles:
         user.roles.append(user_role)
     
     db_session.commit()
@@ -258,14 +342,17 @@ def seed_user_other(db_session: Session) -> User:
     
     Credentials: other@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    user_role = roles["user"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "other@test.com").first()
     if existing:
-        # Ensure RBAC role is assigned
-        user_role = db_session.query(Role).filter_by(name="user").first()
-        if user_role and user_role not in existing.roles:
+        # Ensure RBAC role is assigned deterministically
+        if user_role not in existing.roles:
             existing.roles.append(user_role)
-            db_session.commit()
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -279,8 +366,7 @@ def seed_user_other(db_session: Session) -> User:
     db_session.flush()
     
     # Assign RBAC role
-    user_role = db_session.query(Role).filter_by(name="user").first()
-    if user_role:
+    if user_role not in user.roles:
         user.roles.append(user_role)
 
     db_session.commit()
