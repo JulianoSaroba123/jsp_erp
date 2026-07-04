@@ -31,8 +31,16 @@ if not DATABASE_URL:
 # SECURITY / JWT
 # ============================================================================
 # SECRET_KEY é OBRIGATÓRIO e não pode usar valor padrão inseguro
+# EXCEÇÃO: Em ambiente de teste, permite SECRET_KEY determinística para testes
 SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY or SECRET_KEY == "your-secret-key-change-in-production":
+
+if ENVIRONMENT == "test":
+    # Em ambiente de teste, usa SECRET_KEY segura e determinística
+    # Permite rodar pytest sem configurar SECRET_KEY manualmente
+    if not SECRET_KEY:
+        SECRET_KEY = "test_secret_key_for_pytest_deterministic_0123456789abcdef"
+elif not SECRET_KEY or SECRET_KEY == "your-secret-key-change-in-production":
+    # Em development/production, SECRET_KEY forte é OBRIGATÓRIA
     raise ValueError(
         "SECRET_KEY não configurado ou usando valor padrão inseguro. "
         "Configure uma chave forte no .env. "

@@ -11,6 +11,8 @@ email-validator
 pydantic[email]
 slowapi
 alembic
+jinja2
+weasyprint
 
 # Testing dependencies
 pytest

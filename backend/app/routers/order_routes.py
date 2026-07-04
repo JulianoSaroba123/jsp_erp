@@ -8,12 +8,12 @@ Responsabilidade: receber requests e chamar OrderService.
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.services.order_service import OrderService
 from app.schemas.order_schema import OrderCreate, OrderCreateRequest, OrderOut, OrderUpdate
-from app.security.deps import get_current_user, get_db, require_admin
+from app.security.deps import get_current_user, get_db, require_admin, require_permission
 from app.models.user import User
 from app.exceptions.errors import ConflictError, NotFoundError, ValidationError
 
@@ -23,8 +23,8 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 
 @router.get("", status_code=status.HTTP_200_OK)
 def list_orders(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1, description="Número da página (mínimo 1)"),
+    page_size: int = Query(20, ge=1, le=100, description="Itens por página (1-100)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -250,17 +250,19 @@ def update_order(
 @router.delete("/{order_id}", status_code=status.HTTP_200_OK)
 def delete_order(
     order_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("orders", "delete")),
     db: Session = Depends(get_db)
 ):
     """
     Remove pedido por ID.
     
     **Autenticação obrigatória (Bearer token)**
+    **Permissão requerida: orders:delete**
     
     Regras multi-tenant:
-    - **admin**: pode deletar qualquer pedido
-    - **user, technician, finance**: só pode deletar seus próprios pedidos
+    - **admin com permissão**: pode deletar qualquer pedido
+    - **user com permissão**: só pode deletar seus próprios pedidos
+    - **sem permissão**: HTTP 403 Forbidden
     """
     try:
         is_admin = current_user.role == "admin"

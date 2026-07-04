@@ -16,11 +16,11 @@ from app.schemas.financial_schema import (
     FinancialEntryCreate,
     FinancialEntryResponse,
     FinancialEntryUpdateStatus,
+    FinancialEntryUpdate,
     FinancialEntryListResponse
 )
 from app.security.deps import get_current_user, get_db
 from app.models.user import User
-from app.security.deps import get_db  # CENTRALIZADO
 
 
 router = APIRouter(prefix="/financial/entries", tags=["Financeiro"])
@@ -183,7 +183,27 @@ def create_manual_entry(
             kind=entry_data.kind,
             amount=float(entry_data.amount),
             description=entry_data.description,
-            occurred_at=entry_data.occurred_at
+            occurred_at=entry_data.occurred_at,
+            # Campos profissionais Phase 1
+            category=entry_data.category,
+            subcategory=entry_data.subcategory,
+            due_date=entry_data.due_date,
+            payment_date=entry_data.payment_date,
+            document_number=entry_data.document_number,
+            document_type=entry_data.document_type,
+            payment_method=entry_data.payment_method,
+            notes=entry_data.notes,
+            customer_id=entry_data.customer_id,
+            supplier_id=entry_data.supplier_id,
+            service_order_id=entry_data.service_order_id,
+            original_amount=float(entry_data.original_amount) if entry_data.original_amount else None,
+            interest=float(entry_data.interest) if entry_data.interest else None,
+            discount=float(entry_data.discount) if entry_data.discount else None,
+            penalty=float(entry_data.penalty) if entry_data.penalty else None,
+            installment_info=entry_data.installment_info,
+            is_recurring=entry_data.is_recurring,
+            recurrence_frequency=entry_data.recurrence_frequency,
+            origin=entry_data.origin
         )
         
         return FinancialEntryResponse.model_validate(entry)
@@ -251,7 +271,8 @@ def update_entry_status(
         updated_entry = FinancialService.update_status(
             db=db,
             entry=entry,
-            new_status=status_data.status
+            new_status=status_data.status,
+            payment_date=status_data.payment_date
         )
         
         return FinancialEntryResponse.model_validate(updated_entry)
@@ -273,26 +294,25 @@ def update_entry_status(
         )
 
 
-@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_entry(
+@router.patch("/{entry_id}", response_model=FinancialEntryResponse, status_code=status.HTTP_200_OK)
+def update_entry(
     entry_id: UUID,
+    entry_data: FinancialEntryUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Soft delete de lançamento financeiro.
+    Atualiza um lançamento financeiro completo.
     
     **Autenticação obrigatória (Bearer token)**
     
     Regras multi-tenant:
-    - **admin**: pode deletar qualquer lançamento
-    - **outros roles**: podem deletar apenas seus próprios lançamentos
+    - **admin**: pode atualizar qualquer lançamento
+    - **outros roles**: podem atualizar apenas seus próprios lançamentos
     
-    Regras de negócio:
-    - Apenas lançamentos com status 'pending' ou 'canceled' podem ser deletados
-    - Lançamentos 'paid' não podem ser deletados (409 Conflict)
+    Body: FinancialEntryUpdate (todos os campos são opcionais)
     
-    Response: 204 No Content (sem body)
+    Response: FinancialEntryResponse (lançamento atualizado)
     """
     try:
         # Buscar lançamento
@@ -304,36 +324,90 @@ def delete_entry(
                 detail=f"Lançamento {entry_id} não encontrado"
             )
         
-        # Multi-tenant: user só pode deletar seus lançamentos (admin pode deletar tudo)
+        # Multi-tenant: user só pode atualizar seus lançamentos (admin pode atualizar tudo)
         if current_user.role != "admin" and entry.user_id != current_user.id:
-            # Retorna 404 (não 403) para não revelar existência (anti-enumeration)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Lançamento {entry_id} não encontrado"
             )
         
-        # Soft delete
-        FinancialService.delete_entry(
-            db=db,
-            entry=entry,
-            deleted_by_user_id=current_user.id
-        )
+        # Atualizar campos fornecidos
+        update_data = entry_data.model_dump(exclude_unset=True)
+
+        if "status" in update_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A alteração de status deve ser feita pelo endpoint /status."
+            )
         
-        # 204 No Content - sem retorno
-        return None
+        for field, value in update_data.items():
+            setattr(entry, field, value)
+        
+        # Garantir updated_at seja atualizado
+        from datetime import datetime
+        entry.updated_at = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(entry)
+        
+        return FinancialEntryResponse.model_validate(entry)
     
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         from app.exceptions.errors import sanitize_error_message
-        # ConflictError (status='paid') retorna 409
+        detail = sanitize_error_message(e, "Erro ao atualizar lançamento")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )
+
+
+@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_entry(
+    entry_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove um lançamento financeiro (soft delete).
+    """
+    try:
+        entry = FinancialService.get_entry_by_id(db=db, entry_id=entry_id)
+
+        if not entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Lançamento {entry_id} não encontrado"
+            )
+
+        if current_user.role != "admin" and entry.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Lançamento {entry_id} não encontrado"
+            )
+
+        FinancialService.delete_entry(db=db, entry=entry, deleted_by_user_id=current_user.id)
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
         if "paid" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=str(e)
             )
+
+        from app.exceptions.errors import sanitize_error_message
         detail = sanitize_error_message(e, "Erro ao deletar lançamento")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail
         )
+

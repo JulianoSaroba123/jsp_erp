@@ -107,10 +107,30 @@ class FinancialService:
         kind: str,
         amount: float,
         description: str,
-        occurred_at: Optional[datetime] = None
+        occurred_at: Optional[datetime] = None,
+        # Campos profissionais Phase 1
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+        due_date: Optional[datetime] = None,
+        payment_date: Optional[datetime] = None,
+        document_number: Optional[str] = None,
+        document_type: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        notes: Optional[str] = None,
+        customer_id: Optional[UUID] = None,
+        supplier_id: Optional[UUID] = None,
+        service_order_id: Optional[UUID] = None,
+        original_amount: Optional[float] = None,
+        interest: Optional[float] = None,
+        discount: Optional[float] = None,
+        penalty: Optional[float] = None,
+        installment_info: Optional[str] = None,
+        is_recurring: Optional[bool] = False,
+        recurrence_frequency: Optional[str] = None,
+        origin: Optional[str] = None
     ) -> FinancialEntry:
         """
-        Cria lançamento manual (sem order_id).
+        Cria lançamento manual (sem order_id) com campos profissionais.
         
         Validações:
         - kind IN ('revenue', 'expense')
@@ -124,6 +144,25 @@ class FinancialService:
             amount: Valor (>= 0)
             description: Descrição textual
             occurred_at: Data de ocorrência (default: now)
+            category: Categoria do lançamento (ex: Vendas, Fornecedores)
+            subcategory: Subcategoria (ex: Produtos, Serviços)
+            due_date: Data de vencimento
+            payment_date: Data de pagamento efetivo
+            document_number: Número do documento (NF, boleto)
+            document_type: Tipo do documento (NF-e, boleto)
+            payment_method: Forma de pagamento (pix, dinheiro, cartão)
+            notes: Observações adicionais
+            customer_id: ID do cliente (para receitas)
+            supplier_id: ID do fornecedor (para despesas)
+            service_order_id: ID da ordem de serviço relacionada
+            original_amount: Valor original antes de juros/descontos
+            interest: Juros aplicados
+            discount: Desconto concedido
+            penalty: Multa por atraso
+            installment_info: Info de parcelas (ex: 3/12)
+            is_recurring: É um lançamento recorrente?
+            recurrence_frequency: Frequência (mensal, anual)
+            origin: Origem do lançamento (manual, pedido, importação)
             
         Returns:
             FinancialEntry criado
@@ -143,6 +182,8 @@ class FinancialService:
         if not description:
             raise ValueError("description é obrigatório e não pode estar vazio")
 
+        normalized_origin = (origin or "MANUAL").strip().upper()
+
         # Criar lançamento
         entry = FinancialEntry(
             user_id=user_id,
@@ -151,7 +192,27 @@ class FinancialService:
             status='pending',
             amount=Decimal(str(amount)),
             description=description,
-            occurred_at=occurred_at or datetime.utcnow()
+            occurred_at=occurred_at or datetime.utcnow(),
+            # Campos profissionais
+            category=category,
+            subcategory=subcategory,
+            due_date=due_date,
+            payment_date=payment_date,
+            document_number=document_number,
+            document_type=document_type,
+            payment_method=payment_method,
+            notes=notes,
+            customer_id=customer_id,
+            supplier_id=supplier_id,
+            service_order_id=service_order_id,
+            original_amount=Decimal(str(original_amount)) if original_amount is not None else None,
+            interest=Decimal(str(interest)) if interest is not None else None,
+            discount=Decimal(str(discount)) if discount is not None else None,
+            penalty=Decimal(str(penalty)) if penalty is not None else None,
+            installment_info=installment_info,
+            is_recurring=is_recurring or False,
+            recurrence_frequency=recurrence_frequency,
+            origin=normalized_origin
         )
 
         return FinancialRepository.create(db=db, entry=entry)
@@ -205,7 +266,12 @@ class FinancialService:
             status='pending',  # Aguardando pagamento
             amount=Decimal(str(amount)),
             description=description,
-            occurred_at=datetime.utcnow()
+            occurred_at=datetime.utcnow(),
+            original_amount=Decimal(str(amount)),
+            interest=0,
+            discount=0,
+            penalty=0,
+            origin='ORDER',
         )
 
         try:
@@ -227,7 +293,8 @@ class FinancialService:
     def update_status(
         db: Session,
         entry: FinancialEntry,
-        new_status: str
+        new_status: str,
+        payment_date: Optional[datetime] = None
     ) -> FinancialEntry:
         """
         Atualiza status de um lançamento.
@@ -241,6 +308,7 @@ class FinancialService:
             db: Sessão SQLAlchemy
             entry: FinancialEntry a atualizar
             new_status: Novo status
+            payment_date: Data de pagamento (usado quando new_status='paid')
             
         Returns:
             FinancialEntry atualizado
@@ -263,6 +331,10 @@ class FinancialService:
 
         # pending → paid ou canceled: OK
         if current_status == 'pending' and new_status in ['paid', 'canceled']:
+            # Se está marcando como pago, definir payment_date
+            if new_status == 'paid':
+                entry.payment_date = payment_date or datetime.utcnow()
+            
             return FinancialRepository.update_status(db=db, entry=entry, new_status=new_status)
 
         # Demais transições bloqueadas
@@ -314,31 +386,17 @@ class FinancialService:
     @staticmethod
     def delete_entry(db: Session, entry: FinancialEntry, deleted_by_user_id: UUID) -> FinancialEntry:
         """
-        Soft delete de lançamento financeiro.
-        
-        Regras:
-        - Apenas lançamentos com status='pending' ou 'canceled' podem ser deletados
-        - Lançamentos 'paid' não podem ser deletados (requer estorno formal)
-        
-        Args:
-            db: Sessão SQLAlchemy
-            entry: FinancialEntry a ser deletado
-            deleted_by_user_id: ID do usuário que está deletando
-            
-        Returns:
-            FinancialEntry marcado como deleted
-            
-        Raises:
-            ConflictError: Se status='paid'
+        Soft delete de lançamento financeiro pendente/cancelado.
+
+        Lançamentos pagos não podem ser apagados diretamente, pois isso quebra a
+        trilha financeira; nesses casos o fluxo correto é estorno/cancelamento.
         """
-        # Validação: não permitir delete de lançamento pago
         if entry.status == 'paid':
             raise ConflictError(
                 "Não é possível deletar lançamento financeiro com status='paid'. "
                 "Solicite estorno formal ao financeiro."
             )
-        
-        # Soft delete
+
         return FinancialRepository.soft_delete(
             db=db,
             entry=entry,

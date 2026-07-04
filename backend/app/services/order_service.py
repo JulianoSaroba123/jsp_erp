@@ -197,43 +197,14 @@ class OrderService:
                         financial_entry.status = "pending"
                 
                 else:
-                    # 5.3. Criar nova entry (idempotente via UNIQUE order_id)
-                    try:
-                        new_financial = FinancialEntry(
-                            order_id=order_id,
-                            user_id=user_id,
-                            kind="revenue",
-                            status="pending",
-                            amount=total,
-                            description=f"Pedido {order_id} - {order.description}"
-                        )
-                        db.add(new_financial)
-                        db.flush()  # Testa UNIQUE constraint sem commit
-                    
-                    except IntegrityError:
-                        # Entry foi criado em race condition (idempotência)
-                        # Rollback REVERTE TUDO - precisamos reaplicar mudanças no order
-                        db.rollback()
-                        
-                        # Re-buscar order (sessão foi revertida)
-                        order = OrderRepository.get_by_id_and_user(db, order_id, user_id)
-                        if not order:
-                            raise NotFoundError("Pedido não encontrado após rollback")
-                        
-                        # Reaplicar mudanças que foram perdidas no rollback
-                        if description is not None:
-                            order.description = description
-                        if total is not None:
-                            order.total = total
-                        
-                        # Atualizar financial entry existente
-                        financial_entry = (
-                            db.query(FinancialEntry)
-                            .filter(FinancialEntry.order_id == order_id)
-                            .first()
-                        )
-                        if financial_entry:
-                            financial_entry.amount = total
+                    # 5.3. Criar nova entry com a rotina centralizada de financeiro
+                    FinancialService.create_from_order(
+                        db=db,
+                        order_id=order_id,
+                        user_id=user_id,
+                        amount=total,
+                        description=f"Pedido {order_id} - {order.description}"
+                    )
             
             elif total == 0:
                 # 5.4. Cancelar financial entry se total = 0
@@ -283,8 +254,9 @@ class OrderService:
             raise ValueError("user_id é obrigatório para soft delete")
         
         # Validação multi-tenant: user só pode deletar seus próprios pedidos
+        # Retornar False para anti-enumeration (404 ao invés de 403)
         if not is_admin and order.user_id != user_id:
-            raise ValueError("Você não tem permissão para deletar este pedido")
+            return False
 
         # INTEGRAÇÃO FINANCEIRA: Cancelar lançamento se existir e status='pending'
         # Se status='paid', lança exceção (bloqueia delete)

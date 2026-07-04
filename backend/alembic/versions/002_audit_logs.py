@@ -14,17 +14,15 @@ Esta migration adiciona a tabela audit_logs para rastreabilidade completa:
 - Índices otimizados para consultas comuns
 
 """
-from typing import Sequence, Union
-
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '002_audit_logs'
-down_revision: Union[str, None] = '001_baseline'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision = '002_audit_logs'
+down_revision = '001_baseline'
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:

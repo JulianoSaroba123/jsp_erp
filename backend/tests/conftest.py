@@ -27,7 +27,97 @@ from app.config import SECRET_KEY, ALGORITHM
 from app.models.user import User
 from app.models.order import Order
 from app.models.financial_entry import FinancialEntry
+from app.models.role import Role
+from app.models.permission import Permission
 from app.auth.security import hash_password, create_access_token
+
+
+RBAC_BASE_PERMISSIONS = [
+    ("products", "read"),
+    ("products", "create"),
+    ("products", "update"),
+    ("products", "delete"),
+    ("customers", "read"),
+    ("customers", "create"),
+    ("customers", "update"),
+    ("customers", "delete"),
+    ("suppliers", "read"),
+    ("suppliers", "create"),
+    ("suppliers", "update"),
+    ("suppliers", "delete"),
+    ("orders", "read"),
+    ("orders", "create"),
+    ("orders", "update"),
+    ("orders", "delete"),
+    ("financial", "read"),
+    ("financial", "create"),
+    ("financial", "update"),
+    ("financial", "delete"),
+    ("reports", "read"),
+]
+
+USER_ROLE_PERMISSIONS = [
+    ("products", "read"),
+    ("products", "create"),
+    ("products", "update"),
+    ("products", "delete"),
+    ("orders", "read"),
+    ("orders", "create"),
+    ("orders", "update"),
+    ("financial", "read"),
+    ("financial", "create"),
+    ("financial", "update"),
+    ("reports", "read"),
+]
+
+
+def _get_or_create_permission(db_session: Session, resource: str, action: str) -> Permission:
+    permission = db_session.query(Permission).filter_by(resource=resource, action=action).first()
+    if permission:
+        return permission
+
+    permission = Permission(
+        resource=resource,
+        action=action,
+        description=f"{action} {resource}",
+    )
+    db_session.add(permission)
+    db_session.flush()
+    return permission
+
+
+def _get_or_create_role(db_session: Session, name: str, description: str) -> Role:
+    role = db_session.query(Role).filter_by(name=name).first()
+    if role:
+        return role
+
+    role = Role(name=name, description=description)
+    db_session.add(role)
+    db_session.flush()
+    return role
+
+
+def _ensure_role_permissions(db_session: Session, role: Role, permission_pairs: list[tuple[str, str]]) -> None:
+    existing_pairs = {(permission.resource, permission.action) for permission in role.permissions}
+
+    for resource, action in permission_pairs:
+        key = (resource, action)
+        if key in existing_pairs:
+            continue
+        permission = _get_or_create_permission(db_session, resource, action)
+        role.permissions.append(permission)
+        existing_pairs.add(key)
+
+
+def _ensure_base_test_rbac(db_session: Session) -> dict[str, Role]:
+    admin_role = _get_or_create_role(db_session, "admin", "Admin with full test permissions")
+    user_role = _get_or_create_role(db_session, "user", "Standard user for tests")
+
+    _ensure_role_permissions(db_session, admin_role, RBAC_BASE_PERMISSIONS)
+    _ensure_role_permissions(db_session, user_role, USER_ROLE_PERMISSIONS)
+    db_session.flush()
+
+    return {"admin": admin_role, "user": user_role}
 
 
 # ============================================================================
@@ -50,10 +140,10 @@ def get_test_database_url() -> str:
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """
-    Verifica que o banco de teste existe com schema correto.
+    Verifica que o banco de teste existe com schema correto e aplica migrations.
 
-    O banco deve ser preparado com: .\\prepare_test_db.ps1
-    Este fixture apenas valida a conectividade e importa os modelos.
+    O banco deve existir, mas o schema e reparos idempotentes ficam sob controle
+    do Alembic para evitar drift entre models e banco de teste.
     """
     test_db_url = get_test_database_url()
 
@@ -69,6 +159,15 @@ def setup_test_database():
     # Verificar conectividade
     with test_engine.connect() as conn:
         conn.execute(text("SELECT 1"))
+
+    env = os.environ.copy()
+    env["DATABASE_URL_TEST"] = test_db_url
+    subprocess.run(
+        ["alembic", "upgrade", "head"],
+        cwd=os.path.dirname(os.path.dirname(__file__)),
+        env=env,
+        check=True,
+    )
 
     yield
 
@@ -96,9 +195,13 @@ def db_session(setup_test_database) -> Generator[Session, None, None]:
         session.rollback()
         
         # Cleanup data in reverse order (FK constraints)
+        # Note: RBAC tables (roles, permissions, user_roles, role_permissions) não são limpas aqui
+        # para evitar conflitos em testes paralelos. Rode seed_rbac novamente se necessário.
         session.execute(text("TRUNCATE TABLE core.audit_logs CASCADE"))
         session.execute(text("TRUNCATE TABLE core.financial_entries CASCADE"))
         session.execute(text("TRUNCATE TABLE core.orders CASCADE"))
+        session.execute(text("TRUNCATE TABLE core.customers CASCADE"))
+        session.execute(text("TRUNCATE TABLE core.products CASCADE"))
         session.execute(text("TRUNCATE TABLE core.users CASCADE"))
         session.commit()
         session.close()
@@ -141,6 +244,15 @@ def client_admin(client: TestClient, seed_user_admin: User, auth_headers_admin: 
     return client
 
 
+@pytest.fixture
+def client_with_delete(client: TestClient, seed_user_with_delete_permission: User, auth_headers_with_delete: dict) -> TestClient:
+    """
+    Test client pré-autenticado como usuário com permissão orders:delete.
+    """
+    client.headers.update(auth_headers_with_delete)
+    return client
+
+
 # ============================================================================
 # USER FIXTURES
 # ============================================================================
@@ -152,9 +264,17 @@ def seed_user_admin(db_session: Session) -> User:
     
     Credentials: admin@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    admin_role = roles["admin"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "admin@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned deterministically
+        if admin_role not in existing.roles:
+            existing.roles.append(admin_role)
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -165,8 +285,18 @@ def seed_user_admin(db_session: Session) -> User:
         is_active=True
     )
     db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role (admin role with deterministic permissions)
+    if admin_role not in user.roles:
+        user.roles.append(admin_role)
+    
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -177,9 +307,17 @@ def seed_user_normal(db_session: Session) -> User:
     
     Credentials: user@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    user_role = roles["user"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "user@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned deterministically
+        if user_role not in existing.roles:
+            existing.roles.append(user_role)
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -190,8 +328,18 @@ def seed_user_normal(db_session: Session) -> User:
         is_active=True
     )
     db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role (user role with deterministic test permissions)
+    if user_role not in user.roles:
+        user.roles.append(user_role)
+    
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -202,9 +350,17 @@ def seed_user_other(db_session: Session) -> User:
     
     Credentials: other@test.com / testpass123
     """
+    roles = _ensure_base_test_rbac(db_session)
+    user_role = roles["user"]
+
     # Check if user already exists (idempotent fixture)
     existing = db_session.query(User).filter(User.email == "other@test.com").first()
     if existing:
+        # Ensure RBAC role is assigned deterministically
+        if user_role not in existing.roles:
+            existing.roles.append(user_role)
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
     
     user = User(
@@ -215,8 +371,18 @@ def seed_user_other(db_session: Session) -> User:
         is_active=True
     )
     db_session.add(user)
+    db_session.flush()
+    
+    # Assign RBAC role
+    if user_role not in user.roles:
+        user.roles.append(user_role)
+
     db_session.commit()
-    db_session.refresh(user)
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
     return user
 
 
@@ -251,6 +417,110 @@ def auth_headers_other(seed_user_other: User) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture
+def seed_user_with_delete_permission(db_session: Session) -> User:
+    """
+    Create user with orders:delete permission for testing RBAC.
+    
+    Credentials: deleter@test.com / testpass123
+    """
+    # Check if user already exists
+    existing = db_session.query(User).filter(User.email == "deleter@test.com").first()
+    if existing:
+        return existing
+    
+    # Create user
+    user = User(
+        name="Deleter User",
+        email="deleter@test.com",
+        password_hash=hash_password("testpass123"),
+        role="user",
+        is_active=True
+    )
+    db_session.add(user)
+    db_session.flush()
+    
+    # Create permission if not exists
+    delete_permission = db_session.query(Permission).filter_by(
+        resource="orders", action="delete"
+    ).first()
+    if not delete_permission:
+        delete_permission = Permission(resource="orders", action="delete")
+        db_session.add(delete_permission)
+        db_session.flush()
+    
+    # Create role if not exists
+    deleter_role = db_session.query(Role).filter_by(name="order_deleter").first()
+    if not deleter_role:
+        deleter_role = Role(name="order_deleter", description="Can delete orders")
+        deleter_role.permissions.append(delete_permission)
+        db_session.add(deleter_role)
+        db_session.flush()
+    
+    # Assign role to user
+    if deleter_role not in user.roles:
+        user.roles.append(deleter_role)
+    
+    db_session.commit()
+    user = (
+        db_session.query(User)
+        .filter_by(email=user.email)
+        .one()
+    )
+    return user
+
+
+@pytest.fixture
+def seed_admin_with_delete_permission(db_session: Session, seed_user_admin: User) -> User:
+    """
+    Add orders:delete permission to admin user.
+    
+    Used in tests that require admin to delete orders.
+    """
+    # Create permission if not exists
+    delete_permission = db_session.query(Permission).filter_by(
+        resource="orders", action="delete"
+    ).first()
+    if not delete_permission:
+        delete_permission = Permission(resource="orders", action="delete")
+        db_session.add(delete_permission)
+        db_session.flush()
+    
+    # Create role if not exists
+    admin_deleter_role = db_session.query(Role).filter_by(name="admin_order_deleter").first()
+    if not admin_deleter_role:
+        admin_deleter_role = Role(name="admin_order_deleter", description="Admin can delete orders")
+        admin_deleter_role.permissions.append(delete_permission)
+        db_session.add(admin_deleter_role)
+        db_session.flush()
+    
+    # Assign role to admin if not already assigned
+    if admin_deleter_role not in seed_user_admin.roles:
+        seed_user_admin.roles.append(admin_deleter_role)
+        db_session.commit()
+    
+    db_session.refresh(seed_user_admin)
+    return seed_user_admin
+
+
+@pytest.fixture
+def auth_headers_with_delete(seed_user_with_delete_permission: User) -> dict:
+    """
+    Generate Bearer token headers for user with delete permission.
+    """
+    token = create_access_token(subject=str(seed_user_with_delete_permission.id))
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers_admin_with_delete(seed_admin_with_delete_permission: User) -> dict:
+    """
+    Generate Bearer token headers for admin with delete permission.
+    """
+    token = create_access_token(subject=str(seed_admin_with_delete_permission.id))
+    return {"Authorization": f"Bearer {token}"}
+
+
 # ============================================================================
 # DATA FIXTURES
 # ============================================================================
@@ -281,6 +551,11 @@ def sample_financial_entry(db_session: Session, seed_user_normal: User) -> Finan
         kind="revenue",
         status="pending",
         amount=50.00,
+        original_amount=50.00,
+        interest=0,
+        discount=0,
+        penalty=0,
+        origin="manual",
         description="Test Revenue",
         occurred_at=datetime.utcnow()
     )

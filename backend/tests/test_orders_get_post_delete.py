@@ -17,6 +17,22 @@ from app.models.order import Order
 from app.models.financial_entry import FinancialEntry
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    payload = dict(overrides)
+    amount = payload.get("amount", 0)
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+    return FinancialEntry(**payload)
+
+
 @pytest.mark.integration
 def test_create_order_with_zero_total_no_financial(
     client: TestClient,
@@ -161,15 +177,15 @@ def test_get_orders_admin_sees_all(
 def test_delete_order_with_pending_financial_succeeds(
     client: TestClient,
     db_session: Session,
-    seed_user_normal: User,
-    auth_headers_user: dict
+    seed_user_with_delete_permission: User,
+    auth_headers_with_delete: dict
 ):
     """
     Test DELETE /orders/{id} works when financial entry is pending.
     """
     # Create order with financial entry
     order = Order(
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         description="Order to delete",
         total=100
     )
@@ -177,9 +193,9 @@ def test_delete_order_with_pending_financial_succeeds(
     db_session.commit()
     db_session.refresh(order)
     
-    financial = FinancialEntry(
+    financial = build_financial_entry(
         order_id=order.id,
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         kind="revenue",
         status="pending",
         amount=100,
@@ -189,7 +205,7 @@ def test_delete_order_with_pending_financial_succeeds(
     db_session.commit()
     
     # Delete order
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     
     assert response.status_code == 200
 
@@ -198,15 +214,15 @@ def test_delete_order_with_pending_financial_succeeds(
 def test_delete_order_with_paid_financial_blocked(
     client: TestClient,
     db_session: Session,
-    seed_user_normal: User,
-    auth_headers_user: dict
+    seed_user_with_delete_permission: User,
+    auth_headers_with_delete: dict
 ):
     """
     Test DELETE /orders/{id} blocked when financial entry is paid.
     """
     # Create order with PAID financial entry
     order = Order(
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         description="Order with paid financial",
         total=100
     )
@@ -214,9 +230,9 @@ def test_delete_order_with_paid_financial_blocked(
     db_session.commit()
     db_session.refresh(order)
     
-    financial = FinancialEntry(
+    financial = build_financial_entry(
         order_id=order.id,
-        user_id=seed_user_normal.id,
+        user_id=seed_user_with_delete_permission.id,
         kind="revenue",
         status="paid",  # PAID
         amount=100,
@@ -226,7 +242,7 @@ def test_delete_order_with_paid_financial_blocked(
     db_session.commit()
     
     # Try to delete order
-    response = client.delete(f"/orders/{order.id}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{order.id}", headers=auth_headers_with_delete)
     
     # Should be blocked (400 or 409)
     assert response.status_code in [400, 409]
@@ -265,12 +281,12 @@ def test_anti_enumeration_other_user_order_returns_404(
 @pytest.mark.integration
 def test_delete_nonexistent_order_returns_404(
     client: TestClient,
-    auth_headers_user: dict
+    auth_headers_with_delete: dict
 ):
     """
     Test deleting non-existent order returns 404.
     """
     fake_uuid = "00000000-0000-0000-0000-000000000000"
-    response = client.delete(f"/orders/{fake_uuid}", headers=auth_headers_user)
+    response = client.delete(f"/orders/{fake_uuid}", headers=auth_headers_with_delete)
     
     assert response.status_code == 404

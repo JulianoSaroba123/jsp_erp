@@ -18,6 +18,22 @@ from app.models.user import User
 from app.models.financial_entry import FinancialEntry
 
 
+def build_financial_entry(**overrides) -> FinancialEntry:
+    payload = dict(overrides)
+    amount = payload.get("amount", 0)
+    if payload.get("original_amount") is None:
+        payload["original_amount"] = amount
+    if payload.get("interest") is None:
+        payload["interest"] = 0
+    if payload.get("discount") is None:
+        payload["discount"] = 0
+    if payload.get("penalty") is None:
+        payload["penalty"] = 0
+    if payload.get("origin") is None:
+        payload["origin"] = "manual"
+    return FinancialEntry(**payload)
+
+
 @pytest.mark.reports
 @pytest.mark.smoke
 def test_dre_report_structure(
@@ -30,19 +46,21 @@ def test_dre_report_structure(
     Test GET /reports/financial/dre returns correct structure.
     """
     # Create sample data
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
         amount=1000,
-        description="Revenue 1"
+        description="Revenue 1",
+        occurred_at=datetime(2026, 2, 15, 12, 0, 0)
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="expense",
         status="paid",
         amount=300,
-        description="Expense 1"
+        description="Expense 1",
+        occurred_at=datetime(2026, 2, 20, 14, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()
@@ -80,7 +98,7 @@ def test_cashflow_daily_returns_time_series(
     """
     # Create entry on specific date
     specific_date = datetime(2026, 2, 15, 12, 0, 0)
-    entry = FinancialEntry(
+    entry = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
@@ -135,7 +153,7 @@ def test_pending_aging_buckets(
     # Create pending entries with different ages
     today = datetime.utcnow()
     
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="pending",
@@ -143,7 +161,7 @@ def test_pending_aging_buckets(
         description="Recent",
         occurred_at=today - timedelta(days=5)
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="pending",
@@ -195,21 +213,21 @@ def test_top_entries_report(
     Test GET /reports/financial/top returns top entries by amount.
     """
     # Create entries with different amounts
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
         amount=1000,
         description="Large revenue"
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="expense",
         status="paid",
         amount=50,
         description="Small expense"
     )
-    entry3 = FinancialEntry(
+    entry3 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
@@ -267,19 +285,21 @@ def test_reports_multi_tenant_admin_sees_all(
     Test admin sees all users' data in reports.
     """
     # Create entries for different users
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
         amount=100,
-        description="User entry"
+        description="User entry",
+        occurred_at=datetime(2026, 2, 10, 10, 0, 0)
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_other.id,
         kind="revenue",
         status="paid",
         amount=200,
-        description="Other user entry"
+        description="Other user entry",
+        occurred_at=datetime(2026, 2, 12, 11, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()
@@ -309,19 +329,21 @@ def test_reports_multi_tenant_user_sees_own_only(
     Test normal user sees only their own data in reports.
     """
     # Create entries for different users
-    entry1 = FinancialEntry(
+    entry1 = build_financial_entry(
         user_id=seed_user_normal.id,
         kind="revenue",
         status="paid",
         amount=100,
-        description="User entry"
+        description="User entry",
+        occurred_at=datetime(2026, 2, 10, 10, 0, 0)
     )
-    entry2 = FinancialEntry(
+    entry2 = build_financial_entry(
         user_id=seed_user_other.id,
         kind="revenue",
         status="paid",
         amount=200,
-        description="Other user entry"
+        description="Other user entry",
+        occurred_at=datetime(2026, 2, 12, 11, 0, 0)
     )
     db_session.add_all([entry1, entry2])
     db_session.commit()

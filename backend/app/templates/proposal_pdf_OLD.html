@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Proposta Comercial #{{ proposal.number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2563eb;
+            font-size: 24pt;
+            margin: 0 0 10px 0;
+        }
+        
+        .header .numero {
+            font-size: 14pt;
+            color: #666;
+        }
+        
+        .info-section {
+            margin-bottom: 25px;
+        }
+        
+        .info-section h2 {
+            font-size: 14pt;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            padding: 8px;
+            background-color: #f9fafb;
+            border-left: 3px solid #2563eb;
+        }
+        
+        .info-item label {
+            font-weight: bold;
+            color: #666;
+            font-size: 9pt;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .info-item value {
+            color: #111;
+            font-size: 10pt;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 12px;
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-rascunho {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-enviada {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-aprovada {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-rejeitada {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-cancelada {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table thead {
+            background-color: #2563eb;
+            color: white;
+        }
+        
+        table th {
+            padding: 10px;
+            text-align: left;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+        
+        table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 9pt;
+        }
+        
+        table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .totals {
+            margin-top: 20px;
+            text-align: right;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 5px;
+            font-size: 11pt;
+        }
+        
+        .total-row label {
+            margin-right: 20px;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .total-row value {
+            min-width: 120px;
+            text-align: right;
+        }
+        
+        .total-final {
+            font-size: 14pt;
+            color: #2563eb;
+            font-weight: bold;
+            border-top: 2px solid #2563eb;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .observacoes {
+            background-color: #f9fafb;
+            border-left: 4px solid #fbbf24;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 9pt;
+            white-space: pre-wrap;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <h1>PROPOSTA COMERCIAL</h1>
+        <div class="numero">#{{ proposal.number }}</div>
+    </div>
+    
+    <!-- Informações Gerais -->
+    <div class="info-section">
+        <h2>Informações Gerais</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Data de Emissão:</label>
+                <value>{{ proposal.issue_date.strftime('%d/%m/%Y') if proposal.issue_date else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Validade até:</label>
+                <value>{{ proposal.validity_date.strftime('%d/%m/%Y') if proposal.validity_date else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Status:</label>
+                <value><span class="status-badge status-{{ proposal.status }}">{{ proposal.status }}</span></value>
+            </div>
+            <div class="info-item">
+                <label>Responsável:</label>
+                <value>{{ proposal.user.name if proposal.user else 'N/A' }}</value>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Título/Descrição -->
+    {% if proposal.title %}
+    <div class="info-section">
+        <h2>{{ proposal.title }}</h2>
+        {% if proposal.description %}
+        <p style="white-space: pre-wrap;">{{ proposal.description }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Cliente -->
+    <div class="info-section">
+        <h2>Cliente</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Nome:</label>
+                <value>{{ proposal.customer.name if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>E-mail:</label>
+                <value>{{ proposal.customer.email if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Telefone:</label>
+                <value>{{ proposal.customer.phone if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Documento:</label>
+                <value>{{ proposal.customer.document if proposal.customer else 'N/A' }}</value>
+            </div>
+        </div>
+        {% if proposal.customer_contact %}
+        <div class="info-item">
+            <label>Contato:</label>
+            <value>{{ proposal.customer_contact }}</value>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Itens/Serviços -->
+    {% if proposal.items and proposal.items|length > 0 %}
+    <div class="section-title">Serviços</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 45%;">Descrição</th>
+                <th style="width: 15%;">Tipo</th>
+                <th style="width: 10%;">Qtd</th>
+                <th style="width: 12%;">Valor Unit.</th>
+                <th style="width: 13%;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in proposal.items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.description }}</td>
+                <td>{{ item.service_type }}</td>
+                <td style="text-align: center;">{{ "%.2f"|format(item.quantity) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(item.unit_price) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(item.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <!-- Produtos/Materiais -->
+    {% if proposal.products and proposal.products|length > 0 %}
+    <div class="section-title">Materiais/Produtos</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 50%;">Descrição</th>
+                <th style="width: 10%;">Qtd</th>
+                <th style="width: 15%;">Valor Unit.</th>
+                <th style="width: 20%;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prod in proposal.products %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ prod.description }}</td>
+                <td style="text-align: center;">{{ "%.2f"|format(prod.quantity) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(prod.unit_price) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(prod.total_price) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <!-- Totalizadores -->
+    <div class="totals">
+        {% if proposal.service_amount and proposal.service_amount > 0 %}
+        <div class="total-row">
+            <label>Serviços:</label>
+            <value>R$ {{ "%.2f"|format(proposal.service_amount) }}</value>
+        </div>
+        {% endif %}
+        
+        {% if proposal.parts_amount and proposal.parts_amount > 0 %}
+        <div class="total-row">
+            <label>Materiais:</label>
+            <value>R$ {{ "%.2f"|format(proposal.parts_amount) }}</value>
+        </div>
+        {% endif %}
+        
+        {% if proposal.discount_amount and proposal.discount_amount > 0 %}
+        <div class="total-row">
+            <label>Desconto:</label>
+            <value>- R$ {{ "%.2f"|format(proposal.discount_amount) }}</value>
+        </div>
+        {% endif %}
+        
+        <div class="total-row total-final">
+            <label>VALOR TOTAL:</label>
+            <value>R$ {{ "%.2f"|format(proposal.total_amount) }}</value>
+        </div>
+    </div>
+    
+    <!-- Condições -->
+    <div class="info-section">
+        <h2>Condições</h2>
+        <div class="info-grid">
+            {% if proposal.payment_condition %}
+            <div class="info-item">
+                <label>Pagamento:</label>
+                <value>{{ proposal.payment_condition }}</value>
+            </div>
+            {% endif %}
+            
+            {% if proposal.delivery_days %}
+            <div class="info-item">
+                <label>Prazo de Entrega:</label>
+                <value>{{ proposal.delivery_days }}</value>
+            </div>
+            {% endif %}
+            
+            {% if proposal.warranty_days %}
+            <div class="info-item">
+                <label>Garantia:</label>
+                <value>{{ proposal.warranty_days }}</value>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Observações -->
+    {% if proposal.observations %}
+    <div class="observacoes">
+        <strong>Observações:</strong><br>
+        {{ proposal.observations }}
+    </div>
+    {% endif %}
+    
+    <!-- Rodapé -->
+    <div class="footer">
+        <p>Documento gerado em {{ now.strftime('%d/%m/%Y às %H:%M') }}</p>
+        {% if proposal.validity_date %}
+        <p>Esta proposta é válida até {{ proposal.validity_date.strftime('%d/%m/%Y') }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2563eb;
+            font-size: 24pt;
+            margin: 0 0 10px 0;
+        }
+        
+        .header .numero {
+            font-size: 14pt;
+            color: #666;
+        }
+        
+        .info-section {
+            margin-bottom: 25px;
+        }
+        
+        .info-section h2 {
+            font-size: 14pt;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            padding: 8px;
+            background-color: #f9fafb;
+            border-left: 3px solid #2563eb;
+        }
+        
+        .info-item label {
+            font-weight: bold;
+            color: #666;
+            font-size: 9pt;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .info-item value {
+            color: #111;
+            font-size: 10pt;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 12px;
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-rascunho {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-enviada {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-aprovada {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-rejeitada {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-cancelada {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table thead {
+            background-color: #2563eb;
+            color: white;
+        }
+        
+        table th {
+            padding: 10px;
+            text-align: left;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+        
+        table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 9pt;
+        }
+        
+        table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .totals {
+            margin-top: 20px;
+            text-align: right;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 5px;
+            font-size: 11pt;
+        }
+        
+        .total-row label {
+            margin-right: 20px;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .total-row value {
+            min-width: 120px;
+            text-align: right;
+        }
+        
+        .total-final {
+            font-size: 14pt;
+            color: #2563eb;
+            font-weight: bold;
+            border-top: 2px solid #2563eb;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .observacoes {
+            background-color: #f9fafb;
+            border-left: 4px solid #fbbf24;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 9pt;
+            white-space: pre-wrap;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+        }
+        
+        .installment-table {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <h1>PROPOSTA COMERCIAL</h1>
+        <div class="numero">#{{ proposal.numero_proposta }}</div>
+    </div>
+    
+    <!-- Informações Gerais -->
+    <div class="info-section">
+        <h2>Informações Gerais</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Data de Emissão:</label>
+                <value>{{ proposal.data_emissao.strftime('%d/%m/%Y') if proposal.data_emissao else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Validade:</label>
+                <value>{{ proposal.validade_dias }} dias</value>
+            </div>
+            <div class="info-item">
+                <label>Status:</label>
+                <value><span class="status-badge status-{{ proposal.status }}">{{ proposal.status }}</span></value>
+            </div>
+            <div class="info-item">
+                <label>Vendedor:</label>
+                <value>{{ proposal.vendedor.name if proposal.vendedor else 'N/A' }}</value>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cliente -->
+    <div class="info-section">
+        <h2>Cliente</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Nome:</label>
+                <value>{{ proposal.customer.name if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>E-mail:</label>
+                <value>{{ proposal.customer.email if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Telefone:</label>
+                <value>{{ proposal.customer.phone if proposal.customer else 'N/A' }}</value>
+            </div>
+            <div class="info-item">
+                <label>Documento:</label>
+                <value>{{ proposal.customer.document if proposal.customer else 'N/A' }}</value>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Itens da Proposta -->
+    {% if proposal.items and proposal.items|length > 0 %}
+    <div class="section-title">Itens da Proposta</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 10%;">Item</th>
+                <th style="width: 50%;">Descrição</th>
+                <th style="width: 10%;">Qtd</th>
+                <th style="width: 15%;">Valor Unit.</th>
+                <th style="width: 15%;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in proposal.items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.descricao }}</td>
+                <td style="text-align: center;">{{ item.quantidade }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(item.valor_unitario) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(item.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <!-- Produtos da Proposta -->
+    {% if proposal.products and proposal.products|length > 0 %}
+    <div class="section-title">Produtos</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%;">Código</th>
+                <th style="width: 45%;">Produto</th>
+                <th style="width: 10%;">Qtd</th>
+                <th style="width: 15%;">Valor Unit.</th>
+                <th style="width: 15%;">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prod in proposal.products %}
+            <tr>
+                <td>{{ prod.product.codigo if prod.product else 'N/A' }}</td>
+                <td>{{ prod.product.nome if prod.product else 'N/A' }}</td>
+                <td style="text-align: center;">{{ prod.quantidade }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(prod.valor_unitario) }}</td>
+                <td style="text-align: right;">R$ {{ "%.2f"|format(prod.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    <!-- Totalizadores -->
+    <div class="totals">
+        <div class="total-row">
+            <label>Subtotal:</label>
+            <value>R$ {{ "%.2f"|format(proposal.valor_subtotal) }}</value>
+        </div>
+        
+        {% if proposal.valor_desconto > 0 %}
+        <div class="total-row">
+            <label>Desconto:</label>
+            <value>- R$ {{ "%.2f"|format(proposal.valor_desconto) }}</value>
+        </div>
+        {% endif %}
+        
+        <div class="total-row total-final">
+            <label>TOTAL:</label>
+            <value>R$ {{ "%.2f"|format(proposal.valor_total) }}</value>
+        </div>
+    </div>
+    
+    <!-- Condições de Pagamento -->
+    <div class="info-section">
+        <h2>Condições de Pagamento</h2>
+        <div class="info-item">
+            <label>Forma de Pagamento:</label>
+            <value>{{ 'À Vista' if proposal.condicao_pagamento == 'a_vista' else 'Parcelado' }}</value>
+        </div>
+        
+        {% if proposal.condicao_pagamento == 'parcelado' and proposal.installments and proposal.installments|length > 0 %}
+        <table class="installment-table">
+            <thead>
+                <tr>
+                    <th style="width: 20%;">Parcela</th>
+                    <th style="width: 40%;">Vencimento</th>
+                    <th style="width: 40%;">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if proposal.valor_entrada > 0 %}
+                <tr>
+                    <td>Entrada</td>
+                    <td>No ato</td>
+                    <td style="text-align: right;">R$ {{ "%.2f"|format(proposal.valor_entrada) }}</td>
+                </tr>
+                {% endif %}
+                
+                {% for inst in proposal.installments %}
+                <tr>
+                    <td>{{ inst.numero_parcela }}ª</td>
+                    <td>{{ inst.data_vencimento.strftime('%d/%m/%Y') if inst.data_vencimento else 'A definir' }}</td>
+                    <td style="text-align: right;">R$ {{ "%.2f"|format(inst.valor_parcela) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    
+    <!-- Observações -->
+    {% if proposal.observacoes %}
+    <div class="observacoes">
+        <strong>Observações:</strong><br>
+        {{ proposal.observacoes }}
+    </div>
+    {% endif %}
+    
+    <!-- Rodapé -->
+    <div class="footer">
+        <p>Documento gerado em {{ now.strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p>Este documento é uma proposta comercial válida por {{ proposal.validade_dias }} dias a partir da emissão.</p>
+    </div>
+</body>
+</html>

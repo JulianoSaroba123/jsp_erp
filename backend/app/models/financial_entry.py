@@ -2,7 +2,7 @@
 Model SQLAlchemy para tabela core.financial_entries
 Lançamentos financeiros com integração automática de pedidos
 """
-from sqlalchemy import Column, Text, Numeric, VARCHAR, ForeignKey, text, CheckConstraint
+from sqlalchemy import Column, Text, Numeric, VARCHAR, ForeignKey, Boolean, text, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import relationship
 
@@ -97,6 +97,47 @@ class FinancialEntry(Base):
         nullable=False,
         comment="Descrição do lançamento"
     )
+
+    # Campos profissionais Phase 1
+    category = Column(VARCHAR(100), nullable=True)
+    subcategory = Column(VARCHAR(100), nullable=True)
+    due_date = Column(TIMESTAMP(timezone=True), nullable=True)
+    payment_date = Column(TIMESTAMP(timezone=True), nullable=True)
+    document_number = Column(VARCHAR(50), nullable=True)
+    document_type = Column(VARCHAR(50), nullable=True)
+    payment_method = Column(VARCHAR(50), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    # Relacionamentos opcionais
+    customer_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("core.customers.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    supplier_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("core.suppliers.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    service_order_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("core.service_orders.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Cálculos financeiros
+    original_amount = Column(Numeric(12, 2), nullable=True)
+    interest = Column(Numeric(12, 2), nullable=True)
+    discount = Column(Numeric(12, 2), nullable=True)
+    penalty = Column(Numeric(12, 2), nullable=True)
+
+    # Parcelamento e recorrência
+    installment_info = Column(VARCHAR(100), nullable=True)
+    is_recurring = Column(Boolean, nullable=True, server_default=text("false"))
+    recurrence_frequency = Column(VARCHAR(20), nullable=True)
+
+    # Origem
+    origin = Column(VARCHAR(50), nullable=True)
     
     occurred_at = Column(
         TIMESTAMP(timezone=True),
