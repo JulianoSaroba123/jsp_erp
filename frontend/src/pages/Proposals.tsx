@@ -336,7 +336,11 @@ export function Proposals() {
                               }
                             } catch (error) {
                               console.error('❌ Exceção ao gerar PDF:', error);
-                              alert(`Erro ao gerar PDF: ${error.message}`);
+                              if (error instanceof Error) {
+                                alert(`Erro ao gerar PDF: ${error.message}`);
+                              } else {
+                                alert('Erro ao gerar PDF: erro desconhecido');
+                              }
                             }
                           }}
                           className="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300"

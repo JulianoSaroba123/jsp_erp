@@ -1,23 +1,10 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useEffect, useState, type ReactNode } from 'react';
 import { apiClient } from '../api/client';
+import { clearAccessToken, getAccessToken, setAccessToken } from './auth-storage';
+import type { AuthContextValue, AuthLoginResponse, AuthUser } from './auth-types';
+import { setForbiddenHandler, setUnauthorizedHandler } from '../services/http/client';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  is_active: boolean;
-}
-
-interface AuthContextType {
-  isAuthenticated: boolean;
-  loading: boolean;
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -26,57 +13,74 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      setIsAuthenticated(true);
-      // Carregar informações do usuário
-      fetchUserInfo();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchUserInfo = async () => {
-    try {
-      const response = await apiClient.get<User>('/auth/me');
-      setUser(response.data);
-    } catch (error) {
-      // Token inválido ou expirado
-      localStorage.removeItem('access_token');
-      setIsAuthenticated(false);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+  const clearSession = () => {
+    clearAccessToken();
+    setIsAuthenticated(false);
+    setUser(null);
   };
 
+  const refreshUser = async () => {
+    const response = await apiClient.get<AuthUser>('/auth/me');
+    setUser(response.data);
+    setIsAuthenticated(true);
+  };
+
+  useEffect(() => {
+    const disposeUnauthorizedHandler = setUnauthorizedHandler(() => {
+      clearSession();
+    });
+    const disposeForbiddenHandler = setForbiddenHandler(() => {
+      return;
+    });
+
+    async function bootstrapAuth() {
+      const token = getAccessToken();
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await refreshUser();
+      } catch (error) {
+        clearSession();
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void bootstrapAuth();
+
+    return () => {
+      disposeUnauthorizedHandler();
+      disposeForbiddenHandler();
+    };
+  }, []);
+
   const login = async (username: string, password: string) => {
-    // Backend usa OAuth2PasswordRequestForm que exige application/x-www-form-urlencoded
     const params = new URLSearchParams();
     params.append('username', username);
     params.append('password', password);
     
-    const response = await apiClient.post('/auth/login', params, {
+    const response = await apiClient.post<AuthLoginResponse>('/auth/login', params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
     
     const { access_token, user: userData } = response.data;
-    localStorage.setItem('access_token', access_token);
+    setAccessToken(access_token);
     setIsAuthenticated(true);
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
-    setIsAuthenticated(false);
-    setUser(null);
+    clearSession();
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
